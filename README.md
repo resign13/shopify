@@ -19,3 +19,24 @@
 3. cd ..\frontend
 4. npm install
 5. npm run dev
+
+## GitHub 自动部署
+
+当前仓库已内置 GitHub Actions：
+- `.github/workflows/deploy.yml`
+- `scripts/deploy-storefront.sh`
+
+推送到 `main` 后，会通过 SSH 登录服务器并执行：
+- `git fetch`
+- `git reset --hard origin/main`
+- `docker compose build store-web store-api`
+- `docker compose up -d store-web store-api`
+
+GitHub 仓库需要配置以下 Secrets：
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_PASSWORD`
+
+服务器预期目录：
+- `/opt/gingtto/shopify`
+- `/opt/gingtto/deploy`

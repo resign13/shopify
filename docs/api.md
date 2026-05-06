@@ -260,6 +260,7 @@
 - `items[].shippingAddress`
 - `items[].marketingOptIn`
 - `items[].trackingNo`
+- `items[].paymentLink`
 - `items[].shippedAt`
 - `items[].completedAt`
 - `items[].canCancel`
@@ -279,7 +280,7 @@
 
 说明:
 - 仅允许当前商城账号取消自己的订单
-- 仅 `pending` 状态允许取消
+- 仅 `pending_payment` 和 `paid` 状态允许取消
 - 取消后会自动回补 `products.stock`
 - 如果订单包含尺码库存，也会回补 `product_size_prices.stock`
 

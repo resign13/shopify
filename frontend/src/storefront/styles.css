@@ -1611,7 +1611,8 @@ textarea {
   text-transform: capitalize;
 }
 
-.account-order-status.status-pending {
+.account-order-status.status-pending_payment,
+.account-order-status.status-paid {
   border-color: #ead6b4;
   background: #faf3e7;
 }

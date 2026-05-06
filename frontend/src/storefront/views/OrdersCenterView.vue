@@ -59,6 +59,15 @@
               <button class="secondary-button inline-button" type="button" @click="toggleExpanded(order.id)">
                 {{ expandedOrderIds.has(order.id) ? copy.hideDetails : copy.viewDetails }}
               </button>
+              <a
+                v-if="order.paymentLink && order.status === 'pending_payment'"
+                class="primary-button inline-button"
+                :href="order.paymentLink"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {{ copy.payNow }}
+              </a>
               <button
                 v-if="order.canCancel"
                 class="text-button account-cancel-button"
@@ -66,7 +75,7 @@
                 :disabled="cancellingOrderId === order.id"
                 @click="handleCancel(order.id)"
               >
-                {{ cancellingOrderId === order.id ? locale.t('common.loading') : copy.cancelOrder }}
+                {{ cancellingOrderId === order.id ? copy.loading : copy.cancelOrder }}
               </button>
             </div>
 
@@ -91,6 +100,10 @@
                 <div>
                   <span>{{ copy.trackingLabel }}</span>
                   <strong>{{ order.trackingNo || copy.trackingEmpty }}</strong>
+                </div>
+                <div>
+                  <span>{{ copy.paymentLabel }}</span>
+                  <strong>{{ order.paymentLink ? copy.paymentReady : copy.paymentWaiting }}</strong>
                 </div>
                 <div>
                   <span>{{ copy.shippedAtLabel }}</span>
@@ -149,7 +162,7 @@
         </div>
 
         <div v-else class="panel-card empty-state-card">
-          <h3>{{ isFiltering ? copy.filterEmptyTitle : locale.t('common.ordersEmpty') }}</h3>
+          <h3>{{ isFiltering ? copy.filterEmptyTitle : copy.emptyTitle }}</h3>
           <p class="helper">{{ isFiltering ? copy.filterEmptyText : copy.ordersEmptyText }}</p>
         </div>
       </article>
@@ -161,174 +174,74 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { useCatalogStore } from '../stores/catalog'
-import { useLocaleStore } from '../stores/locale'
 
 const catalog = useCatalogStore()
-const locale = useLocaleStore()
 
 const expandedOrderIds = ref(new Set())
 const cancellingOrderId = ref(0)
 const selectedTimeRange = ref('all')
 const selectedStatus = ref('all')
 
-const copyByLocale = {
-  zh: {
-    overline: 'ORDER CENTER',
-    title: '订单中心',
-    subtitle: '按时间和状态筛选订单，查看物流状态、订单明细与下单商品。',
-    ordersEmptyText: '还没有订单记录，可以先去商品页选品。',
-    filterEmptyTitle: '没有符合筛选条件的订单',
-    filterEmptyText: '可以切换时间范围或订单状态后再查看。',
-    itemCountLabel: '件数',
-    viewDetails: '查看详情',
-    hideDetails: '收起详情',
-    cancelOrder: '取消订单',
-    contactLabel: '联系邮箱 / 手机',
-    phoneLabel: '电话',
-    countryLabel: '国家 / 地区',
-    marketingLabel: '营销订阅',
-    trackingLabel: '物流单号',
-    trackingEmpty: '待发货',
-    shippedAtLabel: '发货时间',
-    completedAtLabel: '完成时间',
-    addressLabel: '详细地址',
-    apartmentLabel: '公寓 / 楼层',
-    cityLabel: '城市',
-    stateLabel: '省 / 州',
-    zipLabel: '邮编',
-    itemsTitle: '订单商品',
-    sizeLabel: '尺码',
-    quantityLabel: '数量',
-    yes: '是',
-    no: '否',
-    statusMap: {
-      pending: '待发货',
-      paid: '已付款',
-      packed: '备货中',
-      shipped: '已发货',
-      completed: '已完成',
-      cancelled: '已取消',
-    },
-    filters: {
-      time: {
-        all: '全部时间',
-        days7: '近 7 天',
-        days30: '近 30 天',
-        days90: '近 90 天',
-        thisYear: '今年',
-      },
-      status: {
-        all: '全部状态',
-      },
-    },
+const copy = {
+  overline: 'ORDER CENTER',
+  title: 'Orders',
+  subtitle: 'Review payment progress, shipping status and order details.',
+  emptyTitle: 'No orders yet',
+  ordersEmptyText: 'No orders yet. Start by browsing products.',
+  filterEmptyTitle: 'No orders match the selected filters',
+  filterEmptyText: 'Try another time range or status.',
+  itemCountLabel: 'Items',
+  viewDetails: 'View Details',
+  hideDetails: 'Hide Details',
+  cancelOrder: 'Cancel Order',
+  payNow: 'Pay Now',
+  loading: 'Loading...',
+  contactLabel: 'Email',
+  phoneLabel: 'Phone',
+  countryLabel: 'Country / Region',
+  marketingLabel: 'Marketing Opt-in',
+  trackingLabel: 'Tracking No.',
+  trackingEmpty: 'Pending shipment',
+  paymentLabel: 'Payment',
+  paymentReady: 'Payment link available',
+  paymentWaiting: 'Awaiting payment link',
+  shippedAtLabel: 'Shipped At',
+  completedAtLabel: 'Completed At',
+  addressLabel: 'Address',
+  apartmentLabel: 'Apartment / Suite',
+  cityLabel: 'City',
+  stateLabel: 'State',
+  zipLabel: 'ZIP code',
+  itemsTitle: 'Order Items',
+  sizeLabel: 'Size',
+  quantityLabel: 'Qty',
+  yes: 'Yes',
+  no: 'No',
+  statusMap: {
+    pending_payment: 'Pending Payment',
+    paid: 'Paid',
+    shipped: 'Shipped',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
   },
-  en: {
-    overline: 'ORDER CENTER',
-    title: 'Order Center',
-    subtitle: 'Filter orders by time and status, review tracking progress and inspect order details.',
-    ordersEmptyText: 'No orders yet. Start by browsing products.',
-    filterEmptyTitle: 'No orders match the selected filters',
-    filterEmptyText: 'Try another time range or order status.',
-    itemCountLabel: 'Items',
-    viewDetails: 'View Details',
-    hideDetails: 'Hide Details',
-    cancelOrder: 'Cancel Order',
-    contactLabel: 'Email / Mobile',
-    phoneLabel: 'Phone',
-    countryLabel: 'Country / Region',
-    marketingLabel: 'Marketing Opt-in',
-    trackingLabel: 'Tracking No.',
-    trackingEmpty: 'Pending shipment',
-    shippedAtLabel: 'Shipped At',
-    completedAtLabel: 'Completed At',
-    addressLabel: 'Address',
-    apartmentLabel: 'Apartment / Suite',
-    cityLabel: 'City',
-    stateLabel: 'State',
-    zipLabel: 'ZIP code',
-    itemsTitle: 'Order Items',
-    sizeLabel: 'Size',
-    quantityLabel: 'Qty',
-    yes: 'Yes',
-    no: 'No',
-    statusMap: {
-      pending: 'To Ship',
-      paid: 'Paid',
-      packed: 'Packed',
-      shipped: 'Shipped',
-      completed: 'Completed',
-      cancelled: 'Cancelled',
+  filters: {
+    time: {
+      all: 'All Time',
+      days7: 'Last 7 Days',
+      days30: 'Last 30 Days',
+      days90: 'Last 90 Days',
+      thisYear: 'This Year',
     },
-    filters: {
-      time: {
-        all: 'All Time',
-        days7: 'Last 7 Days',
-        days30: 'Last 30 Days',
-        days90: 'Last 90 Days',
-        thisYear: 'This Year',
-      },
-      status: {
-        all: 'All Status',
-      },
-    },
-  },
-  fr: {
-    overline: 'ORDER CENTER',
-    title: 'Centre de commandes',
-    subtitle: 'Filtrez les commandes par periode et statut, consultez le suivi et ouvrez le detail.',
-    ordersEmptyText: 'Aucune commande pour le moment. Commencez par la page produits.',
-    filterEmptyTitle: 'Aucune commande ne correspond aux filtres',
-    filterEmptyText: 'Essayez une autre periode ou un autre statut.',
-    itemCountLabel: 'Articles',
-    viewDetails: 'Voir le detail',
-    hideDetails: 'Masquer le detail',
-    cancelOrder: 'Annuler la commande',
-    contactLabel: 'E-mail / Mobile',
-    phoneLabel: 'Telephone',
-    countryLabel: 'Pays / Region',
-    marketingLabel: 'Abonnement marketing',
-    trackingLabel: 'Numero logistique',
-    trackingEmpty: 'En attente d expedition',
-    shippedAtLabel: 'Date expedition',
-    completedAtLabel: 'Date completion',
-    addressLabel: 'Adresse',
-    apartmentLabel: 'Appartement / Suite',
-    cityLabel: 'Ville',
-    stateLabel: 'Etat / Region',
-    zipLabel: 'Code postal',
-    itemsTitle: 'Articles commandes',
-    sizeLabel: 'Taille',
-    quantityLabel: 'Qte',
-    yes: 'Oui',
-    no: 'Non',
-    statusMap: {
-      pending: 'A expedier',
-      paid: 'Payee',
-      packed: 'Preparee',
-      shipped: 'Expediee',
-      completed: 'Terminee',
-      cancelled: 'Annulee',
-    },
-    filters: {
-      time: {
-        all: 'Toutes les periodes',
-        days7: '7 derniers jours',
-        days30: '30 derniers jours',
-        days90: '90 derniers jours',
-        thisYear: 'Cette annee',
-      },
-      status: {
-        all: 'Tous les statuts',
-      },
+    status: {
+      all: 'All Status',
     },
   },
 }
 
-const copy = computed(() => copyByLocale[locale.current] || copyByLocale.en)
 const statusOptions = computed(() =>
-  ['pending', 'shipped', 'completed', 'cancelled'].map((value) => ({
+  ['pending_payment', 'paid', 'shipped', 'completed', 'cancelled'].map((value) => ({
     value,
-    label: copy.value.statusMap[value] || value,
+    label: copy.statusMap[value] || value,
   }))
 )
 const isFiltering = computed(() => selectedTimeRange.value !== 'all' || selectedStatus.value !== 'all')
@@ -357,7 +270,7 @@ function matchesTimeRange(value, range) {
 
 function formatCurrency(value) {
   const amount = Number(value || 0)
-  return new Intl.NumberFormat(locale.current === 'fr' ? 'fr-FR' : locale.current === 'en' ? 'en-US' : 'zh-CN', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
@@ -367,7 +280,7 @@ function formatCurrency(value) {
 function formatDate(value) {
   const date = value ? new Date(value) : null
   if (!date || Number.isNaN(date.getTime())) return '--'
-  return new Intl.DateTimeFormat(locale.current === 'fr' ? 'fr-FR' : locale.current === 'en' ? 'en-US' : 'zh-CN', {
+  return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -377,7 +290,7 @@ function formatDate(value) {
 function formatDateTime(value) {
   const date = value ? new Date(value) : null
   if (!date || Number.isNaN(date.getTime())) return '--'
-  return new Intl.DateTimeFormat(locale.current === 'fr' ? 'fr-FR' : locale.current === 'en' ? 'en-US' : 'zh-CN', {
+  return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -387,7 +300,7 @@ function formatDateTime(value) {
 }
 
 function formatStatus(status) {
-  return copy.value.statusMap[status] || status
+  return copy.statusMap[status] || status
 }
 
 function summarizeItems(items) {

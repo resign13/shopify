@@ -41,6 +41,7 @@ from psycopg.sql import Identifier, SQL
 DEFAULT_LANG = "zh"
 SUPPORTED_LANGS = ("zh", "en", "fr")
 HOME_SECTION_KEYS = ("bestSeller", "newArrival", "specialPrice")
+ORDER_STATUSES = ("pending_payment", "paid", "shipped", "completed", "cancelled")
 
 DB_HOST = os.environ.get("PGHOST", "127.0.0.1")
 DB_PORT = int(os.environ.get("PGPORT", "5432"))
@@ -114,6 +115,31 @@ def _fetch_one(query: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | Non
         with conn.cursor() as cur:
             cur.execute(query, params)
             return cur.fetchone()
+
+
+def _sync_order_status_constraint(cur: Any) -> None:
+    cur.execute(
+        """
+        SELECT con.conname
+        FROM pg_constraint con
+        JOIN pg_class rel ON rel.oid = con.conrelid
+        JOIN pg_namespace nsp ON nsp.oid = con.connamespace
+        WHERE nsp.nspname = 'public'
+          AND rel.relname = 'orders'
+          AND con.contype = 'c'
+          AND pg_get_constraintdef(con.oid) ILIKE '%status%'
+        """
+    )
+    rows = cur.fetchall()
+    for row in rows:
+        cur.execute(SQL("ALTER TABLE orders DROP CONSTRAINT IF EXISTS {}").format(Identifier(row["conname"])))
+    cur.execute(
+        """
+        ALTER TABLE orders
+        ADD CONSTRAINT orders_status_check
+        CHECK (status IN ('pending_payment', 'paid', 'shipped', 'completed', 'cancelled'))
+        """
+    )
 
 
 def _iso(value: Any) -> str:
@@ -201,8 +227,12 @@ def _apply_schema_migrations(cur: Any) -> None:
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS state VARCHAR(120)")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS postal_code VARCHAR(40)")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_no VARCHAR(120)")
+    cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_link TEXT")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMPTZ")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ")
+    cur.execute("UPDATE orders SET status = 'pending_payment' WHERE status = 'pending'")
+    cur.execute("UPDATE orders SET status = 'paid' WHERE status = 'packed'")
+    _sync_order_status_constraint(cur)
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS homepage_configs (
@@ -743,6 +773,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
           o.total_amount,
           o.marketing_opt_in,
           o.tracking_no,
+          o.payment_link,
           o.shipped_at,
           o.completed_at,
           o.first_name,
@@ -796,6 +827,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
                 "totalAmount": _num(row["total_amount"]),
                 "marketingOptIn": bool(row.get("marketing_opt_in")),
                 "trackingNo": row.get("tracking_no") or "",
+                "paymentLink": row.get("payment_link") or "",
                 "shippedAt": _iso(row["shipped_at"]) if row.get("shipped_at") else "",
                 "completedAt": _iso(row["completed_at"]) if row.get("completed_at") else "",
                 "firstName": row.get("first_name") or "",
@@ -806,7 +838,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
                 "state": row.get("state") or "",
                 "zip": row.get("postal_code") or "",
                 "itemCount": 0,
-                "canCancel": row["status"] not in {"shipped", "completed", "cancelled"},
+                "canCancel": row["status"] in {"pending_payment", "paid"},
                 "items": [],
             }
 
@@ -969,7 +1001,7 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                   address_line1, apartment, city, state, postal_code, created_at, updated_at
                 )
                 VALUES (
-                  %s, %s, 'pending', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
+                  %s, %s, 'pending_payment', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
                 )
                 RETURNING id
                 """,
@@ -1035,8 +1067,8 @@ def cancel_order(order_id: int, *, user_id: int) -> dict[str, Any]:
 
             if order["status"] == "cancelled":
                 return get_order_by_id(order_id, user_id=user_id)  # type: ignore[return-value]
-            if order["status"] != "pending":
-                raise RuntimeError("Only pending orders can be cancelled")
+            if order["status"] not in {"pending_payment", "paid"}:
+                raise RuntimeError("Only pending payment or paid orders can be cancelled before shipment")
 
             cur.execute(
                 """

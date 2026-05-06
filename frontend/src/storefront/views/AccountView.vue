@@ -92,7 +92,7 @@ const copyByLocale = {
     quickTitle: 'Quick Access',
     quickText: 'Account details and order management now live on separate pages.',
     ordersTitle: 'Order Center',
-    ordersText: 'View orders, filter by status, cancel pending orders and inspect details.',
+    ordersText: 'View orders, filter by status, pay pending orders and cancel them before shipment.',
     shopTitle: 'Continue Shopping',
     shopText: 'Go back to the storefront and keep browsing products.',
   },

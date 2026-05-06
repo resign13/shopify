@@ -204,6 +204,36 @@ def build_homepage_payload(lang: str) -> dict[str, Any]:
     }
 
 
+def parse_section_slug(section_slug: str) -> str:
+    return {
+        "best-seller": "bestSeller",
+        "new-arrival": "newArrival",
+        "special-price": "specialPrice",
+    }.get(str(section_slug or "").strip().lower(), "")
+
+
+def build_collection_payload(section_slug: str, lang: str) -> dict[str, Any] | None:
+    section_key = parse_section_slug(section_slug)
+    if not section_key:
+        return None
+
+    config = get_homepage_config()
+    products = list_products()
+    product_map = {int(item["id"]): item for item in products}
+
+    items = []
+    for product_id in config.get("collectionProductIds", {}).get(section_key, []):
+        product = product_map.get(int(product_id))
+        if product:
+            items.append(serialize_product(product, lang))
+
+    return {
+        "sectionKey": section_key,
+        "sectionSlug": section_slug,
+        "items": items,
+    }
+
+
 def load_sessions() -> list[dict[str, Any]]:
     return read_json(SESSIONS_FILE)
 
@@ -329,6 +359,16 @@ def product_detail(slug: str) -> Any:
     return jsonify({"product": serialize_product(product, lang), "related": related})
 
 
+@app.get("/api/collections/<section_slug>")
+@require_auth
+def collection_products(section_slug: str) -> Any:
+    lang = pick_language()
+    payload = build_collection_payload(section_slug, lang)
+    if not payload:
+        return jsonify({"message": "Collection not found"}), 404
+    return jsonify(payload)
+
+
 @app.post("/api/orders")
 @require_auth
 def create_order_route() -> Any:
@@ -421,6 +461,5 @@ verify_database_connection()
 
 if __name__ == "__main__":
     app.run(debug=False, use_reloader=False, host="0.0.0.0", port=5001)
-
 
 

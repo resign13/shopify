@@ -35,6 +35,7 @@
               <div>
                 <strong>{{ order.orderNo }}</strong>
                 <p>{{ summarizeItems(order.items) }}</p>
+                <p class="account-order-email">{{ order.contactValue || '--' }}</p>
               </div>
               <span class="account-order-status" :class="`status-${order.status}`">
                 {{ formatStatus(order.status) }}
@@ -44,18 +45,8 @@
             <div class="account-order-meta">
               <span>{{ formatDate(order.createdAt) }}</span>
               <span>{{ copy.itemCountLabel }} {{ order.itemCount }}</span>
+              <span>{{ copy.shippingFeeLabel }} {{ formatCurrency(order.shippingFee || 0) }}</span>
               <span>{{ formatCurrency(order.totalAmount) }}</span>
-            </div>
-
-            <div class="account-order-fee">
-              <span>{{ copy.shippingFeeLabel }}</span>
-              <strong>{{ formatCurrency(order.shippingFee || 0) }}</strong>
-            </div>
-
-            <div class="account-order-extra">
-              <span>{{ order.contactName || '--' }}</span>
-              <span>{{ order.phone || '--' }}</span>
-              <span>{{ order.trackingNo || copy.trackingEmpty }}</span>
             </div>
 
             <p class="helper">{{ order.shippingAddress }}</p>
@@ -97,10 +88,6 @@
                 <div>
                   <span>{{ copy.countryLabel }}</span>
                   <strong>{{ order.country || '--' }}</strong>
-                </div>
-                <div>
-                  <span>{{ copy.marketingLabel }}</span>
-                  <strong>{{ order.marketingOptIn ? copy.yes : copy.no }}</strong>
                 </div>
                 <div>
                   <span>{{ copy.trackingLabel }}</span>
@@ -216,7 +203,6 @@ const copy = {
   contactLabel: 'Email',
   phoneLabel: 'Phone',
   countryLabel: 'Country / Region',
-  marketingLabel: 'Marketing Opt-in',
   trackingLabel: 'Tracking No.',
   trackingEmpty: 'Pending shipment',
   paymentLabel: 'Payment',
@@ -235,8 +221,6 @@ const copy = {
   itemsTitle: 'Order Items',
   sizeLabel: 'Size',
   quantityLabel: 'Qty',
-  yes: 'Yes',
-  no: 'No',
   statusMap: {
     pending_payment: 'Pending Payment',
     paid: 'Paid',

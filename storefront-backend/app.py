@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import json
+import re
 import secrets
 import sys
 from datetime import UTC, datetime
@@ -49,6 +50,8 @@ from db import (
     list_products,
     verify_database_connection,
 )
+
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 app = Flask(__name__)
 CORS(app)
@@ -404,6 +407,8 @@ def create_order_route() -> Any:
         missing.append("items")
     if missing:
         return jsonify({"message": f"Missing field: {', '.join(missing)}"}), 400
+    if not EMAIL_RE.match(contact_value):
+        return jsonify({"message": "Invalid field: contact.value"}), 400
 
     try:
         order = create_order(
@@ -461,4 +466,3 @@ verify_database_connection()
 
 if __name__ == "__main__":
     app.run(debug=False, use_reloader=False, host="0.0.0.0", port=5001)
-

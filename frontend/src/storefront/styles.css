@@ -1655,9 +1655,9 @@ textarea {
   color: #b5422d;
 }
 
-.account-order-fee {
-  justify-content: flex-start;
-  gap: 10px;
+.account-order-email {
+  margin-top: 4px;
+  color: var(--muted);
 }
 
 .account-order-detail {

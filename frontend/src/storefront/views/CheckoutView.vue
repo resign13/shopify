@@ -29,6 +29,8 @@
                   <input
                     v-model.trim="form.contactValue"
                     class="field"
+                    type="email"
+                    autocomplete="email"
                     :class="{ 'field-error': errors.contactValue }"
                     :placeholder="checkoutCopy.contactPlaceholder"
                     @blur="validateField('contactValue')"
@@ -36,11 +38,6 @@
                   />
                   <p v-if="errors.contactValue" class="field-error-text">{{ errors.contactValue }}</p>
                 </div>
-
-                <label class="checkout-checkbox-row">
-                  <input v-model="form.marketingOptIn" type="checkbox" />
-                  <span>{{ checkoutCopy.marketingOptIn }}</span>
-                </label>
               </div>
             </div>
 
@@ -266,8 +263,7 @@ const checkoutCopyByLocale = {
     title: 'Checkout',
     subtitle: 'Fill in contact and delivery details. The whole cart will be submitted as one order.',
     contactTitle: 'Contact',
-    contactPlaceholder: 'Email or mobile phone number',
-    marketingOptIn: 'Email me with news and offers',
+    contactPlaceholder: 'Email',
     deliveryTitle: 'Delivery',
     countryPlaceholder: 'Country / Region',
     firstNamePlaceholder: 'First name (optional)',
@@ -284,8 +280,8 @@ const checkoutCopyByLocale = {
     summaryTitle: 'Order Summary',
     sizeLabel: 'Size',
     errors: {
-      contactValue: 'Please enter your email or mobile phone number',
-      contactFormat: 'Please enter a valid email or mobile phone number',
+      contactValue: 'Please enter your email address',
+      contactFormat: 'Please enter a valid email address',
       country: 'Please select a country or region',
       lastName: 'Please enter your last name',
       address: 'Please enter the address',
@@ -379,7 +375,7 @@ const errors = reactive({
 
 const form = reactive({
   contactValue: auth.user?.email || '',
-  marketingOptIn: true,
+  marketingOptIn: false,
   country: '',
   firstName: auth.user?.name?.split(' ')[0] || '',
   lastName: auth.user?.name?.split(' ').slice(1).join(' ') || '',
@@ -412,10 +408,8 @@ function validateContactValue() {
     errors.contactValue = checkoutCopy.value.errors.contactValue
     return false
   }
-  const isEmail = value.includes('@')
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-  const phoneOk = /^[0-9+\-\s()]{6,}$/.test(value)
-  if ((isEmail && !emailOk) || (!isEmail && !phoneOk)) {
+  if (!emailOk) {
     errors.contactValue = checkoutCopy.value.errors.contactFormat
     return false
   }

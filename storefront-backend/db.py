@@ -43,6 +43,13 @@ SUPPORTED_LANGS = ("zh", "en", "fr")
 HOME_SECTION_KEYS = ("bestSeller", "newArrival", "specialPrice")
 ORDER_STATUSES = ("pending_payment", "paid", "shipped", "completed", "cancelled")
 
+
+def _safe_decimal(value: Any) -> Decimal:
+    try:
+        return Decimal(str(value or 0))
+    except Exception:
+        return Decimal("0")
+
 DB_HOST = os.environ.get("PGHOST", "127.0.0.1")
 DB_PORT = int(os.environ.get("PGPORT", "5432"))
 DB_NAME = os.environ.get("PGDATABASE", "lumiere_admin")
@@ -250,6 +257,7 @@ def _apply_schema_migrations(cur: Any) -> None:
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS postal_code VARCHAR(40)")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_no VARCHAR(120)")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_link TEXT")
+    cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_fee NUMERIC(12, 2) NOT NULL DEFAULT 0")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMPTZ")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ")
     _migrate_order_status_values(cur)
@@ -794,6 +802,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
           o.marketing_opt_in,
           o.tracking_no,
           o.payment_link,
+          o.shipping_fee,
           o.shipped_at,
           o.completed_at,
           o.first_name,
@@ -848,6 +857,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
                 "marketingOptIn": bool(row.get("marketing_opt_in")),
                 "trackingNo": row.get("tracking_no") or "",
                 "paymentLink": row.get("payment_link") or "",
+                "shippingFee": _num(row.get("shipping_fee") or 0),
                 "shippedAt": _iso(row["shipped_at"]) if row.get("shipped_at") else "",
                 "completedAt": _iso(row["completed_at"]) if row.get("completed_at") else "",
                 "firstName": row.get("first_name") or "",

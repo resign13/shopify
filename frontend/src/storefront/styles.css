@@ -1544,6 +1544,7 @@ textarea {
 .account-order-main,
 .account-order-meta,
 .account-order-extra,
+.account-order-fee,
 .footer-grid {
   display: flex;
   justify-content: space-between;
@@ -1652,6 +1653,11 @@ textarea {
 
 .account-cancel-button {
   color: #b5422d;
+}
+
+.account-order-fee {
+  justify-content: flex-start;
+  gap: 10px;
 }
 
 .account-order-detail {

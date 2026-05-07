@@ -47,6 +47,11 @@
               <span>{{ formatCurrency(order.totalAmount) }}</span>
             </div>
 
+            <div class="account-order-fee">
+              <span>{{ copy.shippingFeeLabel }}</span>
+              <strong>{{ formatCurrency(order.shippingFee || 0) }}</strong>
+            </div>
+
             <div class="account-order-extra">
               <span>{{ order.contactName || '--' }}</span>
               <span>{{ order.phone || '--' }}</span>
@@ -104,6 +109,18 @@
                 <div>
                   <span>{{ copy.paymentLabel }}</span>
                   <strong>{{ order.paymentLink ? copy.paymentReady : copy.paymentWaiting }}</strong>
+                </div>
+                <div>
+                  <span>{{ copy.itemsSubtotalLabel }}</span>
+                  <strong>{{ formatCurrency(itemsSubtotal(order)) }}</strong>
+                </div>
+                <div>
+                  <span>{{ copy.shippingFeeLabel }}</span>
+                  <strong>{{ formatCurrency(order.shippingFee || 0) }}</strong>
+                </div>
+                <div>
+                  <span>{{ copy.orderTotalLabel }}</span>
+                  <strong>{{ formatCurrency(order.totalAmount) }}</strong>
                 </div>
                 <div>
                   <span>{{ copy.shippedAtLabel }}</span>
@@ -205,6 +222,9 @@ const copy = {
   paymentLabel: 'Payment',
   paymentReady: 'Payment link available',
   paymentWaiting: 'Awaiting payment link',
+  itemsSubtotalLabel: 'Items Subtotal',
+  shippingFeeLabel: 'Shipping Fee',
+  orderTotalLabel: 'Order Total',
   shippedAtLabel: 'Shipped At',
   completedAtLabel: 'Completed At',
   addressLabel: 'Address',
@@ -301,6 +321,10 @@ function formatDateTime(value) {
 
 function formatStatus(status) {
   return copy.statusMap[status] || status
+}
+
+function itemsSubtotal(order) {
+  return (order.items || []).reduce((sum, item) => sum + Number(item.totalPrice || 0), 0)
 }
 
 function summarizeItems(items) {

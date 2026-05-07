@@ -115,7 +115,7 @@ const sectionKeyBySlug = {
 const sectionTitleByKey = {
   bestSeller: 'BEST SELLER',
   newArrival: 'NEW ARRIVAL',
-  specialPrice: 'SPECIAL PRICE',
+  specialPrice: 'PRE-ORDER',
 }
 
 const category = ref(route.query.category?.toString() || '')

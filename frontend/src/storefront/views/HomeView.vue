@@ -283,17 +283,17 @@ const copyByLocale = {
     tabs: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     sectionTitles: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     fallbackOverlines: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     fallbackTitles: {
       bestSeller: '展示当前最值得主推的热销款式',
@@ -328,17 +328,17 @@ const copyByLocale = {
     tabs: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     sectionTitles: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     fallbackOverlines: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     fallbackTitles: {
       bestSeller: 'Lead with your strongest best-selling styles',
@@ -373,17 +373,17 @@ const copyByLocale = {
     tabs: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     sectionTitles: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     fallbackOverlines: {
       bestSeller: 'BEST SELLER',
       newArrival: 'NEW ARRIVAL',
-      specialPrice: 'SPECIAL PRICE',
+      specialPrice: 'PRE-ORDER',
     },
     fallbackTitles: {
       bestSeller: 'Mettez en avant vos meilleurs best-sellers',

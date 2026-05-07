@@ -42,7 +42,7 @@
           {{ navCopy.newArrival }}
         </RouterLink>
         <RouterLink class="nav-link-button" to="/collections/special-price">
-          {{ navCopy.specialPrice }}
+          {{ navCopy.preOrder }}
         </RouterLink>
         <RouterLink class="nav-link-button" :to="{ path: '/home', hash: '#about' }">
           {{ navCopy.about }}
@@ -116,7 +116,7 @@ const navByLocale = {
     shop: 'SHOP',
     bestSeller: 'BEST SELLER',
     newArrival: 'NEW ARRIVAL',
-    specialPrice: 'SPECIAL PRICE',
+    preOrder: 'PRE-ORDER',
     about: 'ABOUT',
     contact: 'CONTACT',
     viewAll: 'VIEW ALL PRODUCTS',
@@ -132,7 +132,7 @@ const navByLocale = {
     shop: 'SHOP',
     bestSeller: 'BEST SELLER',
     newArrival: 'NEW ARRIVAL',
-    specialPrice: 'SPECIAL PRICE',
+    preOrder: 'PRE-ORDER',
     about: 'ABOUT',
     contact: 'CONTACT',
     viewAll: 'VIEW ALL PRODUCTS',
@@ -148,7 +148,7 @@ const navByLocale = {
     shop: 'SHOP',
     bestSeller: 'BEST SELLER',
     newArrival: 'NEW ARRIVAL',
-    specialPrice: 'SPECIAL PRICE',
+    preOrder: 'PRE-ORDER',
     about: 'ABOUT',
     contact: 'CONTACT',
     viewAll: 'VIEW ALL PRODUCTS',

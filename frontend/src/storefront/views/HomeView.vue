@@ -145,7 +145,7 @@
             v-for="product in section.products"
             :key="`${section.key}-${product.id}`"
             :product="product"
-            :show-badge="section.key === 'specialPrice'"
+            :show-badge="false"
           />
         </div>
       </section>

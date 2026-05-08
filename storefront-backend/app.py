@@ -393,22 +393,24 @@ def create_order_route() -> Any:
     contact_name = " ".join(part for part in [first_name, last_name] if part).strip() or last_name
 
     required = {
-        "contact.value": contact_value,
         "delivery.country": country,
         "delivery.lastName": last_name,
         "delivery.address": address,
         "delivery.city": city,
         "delivery.state": state,
         "delivery.zip": zip_code,
-        "delivery.phone": phone,
     }
     missing = [field for field, value in required.items() if not value]
+    if not contact_value and not phone:
+        missing.append("contact.value or delivery.phone")
     if not isinstance(items, list) or not items:
         missing.append("items")
     if missing:
         return jsonify({"message": f"Missing field: {', '.join(missing)}"}), 400
-    if not EMAIL_RE.match(contact_value):
+    if contact_value and not (EMAIL_RE.match(contact_value) or phone == contact_value or re.match(r"^[0-9+\-\s()]{6,}$", contact_value)):
         return jsonify({"message": "Invalid field: contact.value"}), 400
+    if phone and not re.match(r"^[0-9+\-\s()]{6,}$", phone):
+        return jsonify({"message": "Invalid field: delivery.phone"}), 400
 
     try:
         order = create_order(

@@ -13,30 +13,34 @@
       <form v-else class="checkout-layout" @submit.prevent="handleSubmit">
         <section class="panel-card checkout-form-card">
           <div class="section-stack">
-            <div>
-              <p class="eyebrow">{{ checkoutCopy.title }}</p>
-              <h1>{{ checkoutCopy.title }}</h1>
-              <p class="helper">{{ checkoutCopy.subtitle }}</p>
-            </div>
-
             <div class="checkout-section">
               <div class="checkout-section-head">
                 <h2>{{ checkoutCopy.contactTitle }}</h2>
               </div>
 
-              <div class="checkout-stack">
+              <div class="checkout-grid">
                 <div>
                   <input
-                    v-model.trim="form.contactValue"
+                    v-model.trim="form.email"
                     class="field"
-                    type="email"
-                    autocomplete="email"
-                    :class="{ 'field-error': errors.contactValue }"
-                    :placeholder="checkoutCopy.contactPlaceholder"
-                    @blur="validateField('contactValue')"
-                    @input="clearFieldError('contactValue')"
+                    :class="{ 'field-error': errors.email }"
+                    :placeholder="checkoutCopy.emailPlaceholder"
+                    @blur="validateField('email')"
+                    @input="clearContactErrors"
                   />
-                  <p v-if="errors.contactValue" class="field-error-text">{{ errors.contactValue }}</p>
+                  <p v-if="errors.email" class="field-error-text">{{ errors.email }}</p>
+                </div>
+
+                <div>
+                  <input
+                    v-model.trim="form.phone"
+                    class="field"
+                    :class="{ 'field-error': errors.phone }"
+                    :placeholder="checkoutCopy.phonePlaceholder"
+                    @blur="validateField('phone')"
+                    @input="clearContactErrors"
+                  />
+                  <p v-if="errors.phone" class="field-error-text">{{ errors.phone }}</p>
                 </div>
               </div>
             </div>
@@ -67,7 +71,6 @@
                     v-model.trim="form.firstName"
                     class="field"
                     :placeholder="checkoutCopy.firstNamePlaceholder"
-                    @input="clearFieldError('firstName')"
                   />
                 </div>
 
@@ -100,7 +103,6 @@
                     v-model.trim="form.apartment"
                     class="field"
                     :placeholder="checkoutCopy.apartmentPlaceholder"
-                    @input="clearFieldError('apartment')"
                   />
                 </div>
 
@@ -128,7 +130,7 @@
                   <p v-if="errors.state" class="field-error-text">{{ errors.state }}</p>
                 </div>
 
-                <div>
+                <div class="checkout-grid-span">
                   <input
                     v-model.trim="form.zip"
                     class="field"
@@ -139,17 +141,27 @@
                   />
                   <p v-if="errors.zip" class="field-error-text">{{ errors.zip }}</p>
                 </div>
+              </div>
+            </div>
 
-                <div class="checkout-grid-span">
-                  <input
-                    v-model.trim="form.phone"
-                    class="field"
-                    :class="{ 'field-error': errors.phone }"
-                    :placeholder="checkoutCopy.phonePlaceholder"
-                    @blur="validateField('phone')"
-                    @input="clearFieldError('phone')"
-                  />
-                  <p v-if="errors.phone" class="field-error-text">{{ errors.phone }}</p>
+            <div class="checkout-section checkout-smart-parser">
+              <div class="checkout-section-head">
+                <h2>{{ checkoutCopy.smartAddressTitle }}</h2>
+              </div>
+
+              <div class="checkout-stack">
+                <textarea
+                  v-model.trim="addressPaste"
+                  class="field textarea"
+                  :placeholder="checkoutCopy.smartAddressPlaceholder"
+                  @input="clearAddressParseMessages"
+                />
+
+                <div class="checkout-smart-actions">
+                  <button class="secondary-button inline-button" type="button" @click="parseSmartAddress">
+                    {{ checkoutCopy.parseAddress }}
+                  </button>
+                  <span v-if="addressParseMessage" class="helper">{{ addressParseMessage }}</span>
                 </div>
               </div>
             </div>
@@ -226,106 +238,116 @@ const router = useRouter()
 const checkoutCopyByLocale = {
   zh: {
     title: '结算',
-    subtitle: '填写联系信息和收货信息后，订单会一次性同步到后台管理系统。',
-    contactTitle: 'Contact',
-    contactPlaceholder: '邮箱或手机号',
-    marketingOptIn: '接收新品与优惠通知',
-    deliveryTitle: 'Delivery',
+    contactTitle: '联系方式',
+    emailPlaceholder: '邮箱（可选，手机号与邮箱填写任意一个即可）',
+    phonePlaceholder: '手机号（可选，手机号与邮箱填写任意一个即可）',
+    deliveryTitle: '收货地址',
+    smartAddressTitle: '智能拆分地址',
+    smartAddressPlaceholder:
+      "粘贴完整地址，例如：Yacine Belkedrouci, 7 Avenue de l'Appel du 18 Juin 1940, Appt A22, 77100 Meaux, France",
+    parseAddress: '智能拆分',
+    parseAddressSuccess: '地址已自动拆分到上方字段。',
+    parseAddressFailed: '未能完整识别地址，请检查后手动调整。',
     countryPlaceholder: '国家 / 地区',
     firstNamePlaceholder: '名字（选填）',
     lastNamePlaceholder: '姓氏',
     addressPlaceholder: '详细地址',
-    apartmentPlaceholder: '公寓、楼层、房间号（选填）',
+    apartmentPlaceholder: '公寓、楼层、门牌号（选填）',
     cityPlaceholder: '城市',
-    statePlaceholder: '省 / 州',
+    statePlaceholder: '省 / 州 / 区域',
     zipPlaceholder: '邮编',
-    phonePlaceholder: '电话',
     submit: '提交订单',
     success: '订单提交成功，已同步到用户中心。',
     empty: '请先添加商品后再结算。',
     summaryTitle: '订单摘要',
     sizeLabel: '尺码',
     errors: {
-      contactValue: '请填写邮箱或手机号',
-      contactFormat: '请输入有效的邮箱或手机号',
+      contactRequired: '邮箱和手机号至少填写一个',
+      emailFormat: '请输入有效的邮箱地址',
+      phoneFormat: '请输入有效的手机号',
       country: '请选择国家 / 地区',
       lastName: '请填写姓氏',
       address: '请填写详细地址',
       city: '请填写城市',
-      state: '请填写省 / 州',
+      state: '请填写省 / 州 / 区域',
       zip: '请填写邮编',
-      zipFormat: '邮编格式不正确',
-      phone: '请填写联系电话',
-      phoneFormat: '请输入有效的联系电话',
+      zipFormat: '请输入有效的邮编',
     },
   },
   en: {
     title: 'Checkout',
-    subtitle: 'Fill in contact and delivery details. The whole cart will be submitted as one order.',
     contactTitle: 'Contact',
-    contactPlaceholder: 'Email',
-    deliveryTitle: 'Delivery',
+    emailPlaceholder: 'Email (optional if phone is filled)',
+    phonePlaceholder: 'Phone number (optional if email is filled)',
+    deliveryTitle: 'Delivery Address',
+    smartAddressTitle: 'Smart Address Fill',
+    smartAddressPlaceholder:
+      "Paste a full address, for example: Yacine Belkedrouci, 7 Avenue de l'Appel du 18 Juin 1940, Appt A22, 77100 Meaux, France",
+    parseAddress: 'Auto Fill Address',
+    parseAddressSuccess: 'The address has been split into the fields above.',
+    parseAddressFailed: 'We could not fully parse this address. Please adjust the fields manually.',
     countryPlaceholder: 'Country / Region',
     firstNamePlaceholder: 'First name (optional)',
     lastNamePlaceholder: 'Last name',
     addressPlaceholder: 'Address',
     apartmentPlaceholder: 'Apartment, suite, etc. (optional)',
     cityPlaceholder: 'City',
-    statePlaceholder: 'State',
-    zipPlaceholder: 'ZIP code',
-    phonePlaceholder: 'Phone',
+    statePlaceholder: 'State / Province / Region',
+    zipPlaceholder: 'ZIP / Postal code',
     submit: 'Submit Order',
     success: 'Order submitted successfully. You can review it in your account.',
     empty: 'Please add products to your cart before checkout.',
     summaryTitle: 'Order Summary',
     sizeLabel: 'Size',
     errors: {
-      contactValue: 'Please enter your email address',
-      contactFormat: 'Please enter a valid email address',
+      contactRequired: 'Please enter either an email or a phone number',
+      emailFormat: 'Please enter a valid email address',
+      phoneFormat: 'Please enter a valid phone number',
       country: 'Please select a country or region',
       lastName: 'Please enter your last name',
       address: 'Please enter the address',
       city: 'Please enter the city',
-      state: 'Please enter the state',
-      zip: 'Please enter the ZIP code',
-      zipFormat: 'Please enter a valid ZIP code',
-      phone: 'Please enter the phone number',
-      phoneFormat: 'Please enter a valid phone number',
+      state: 'Please enter the state, province, or region',
+      zip: 'Please enter the ZIP or postal code',
+      zipFormat: 'Please enter a valid ZIP or postal code',
     },
   },
   fr: {
     title: 'Paiement',
-    subtitle: 'Renseignez le contact et la livraison. Tout le panier sera envoye comme une seule commande.',
     contactTitle: 'Contact',
-    contactPlaceholder: 'E-mail ou numero de telephone',
-    marketingOptIn: 'Recevoir les actualites et offres',
-    deliveryTitle: 'Livraison',
+    emailPlaceholder: 'E-mail (optionnel si telephone rempli)',
+    phonePlaceholder: 'Telephone (optionnel si e-mail rempli)',
+    deliveryTitle: 'Adresse de livraison',
+    smartAddressTitle: 'Remplissage intelligent',
+    smartAddressPlaceholder:
+      "Collez une adresse complete, par exemple : Yacine Belkedrouci, 7 Avenue de l'Appel du 18 Juin 1940, Appt A22, 77100 Meaux, France",
+    parseAddress: 'Remplir automatiquement',
+    parseAddressSuccess: "L'adresse a ete repartie dans les champs ci-dessus.",
+    parseAddressFailed: "L'adresse n'a pas pu etre reconnue completement. Veuillez corriger manuellement.",
     countryPlaceholder: 'Pays / Region',
     firstNamePlaceholder: 'Prenom (optionnel)',
     lastNamePlaceholder: 'Nom',
     addressPlaceholder: 'Adresse',
     apartmentPlaceholder: 'Appartement, suite, etc. (optionnel)',
     cityPlaceholder: 'Ville',
-    statePlaceholder: 'Etat / Region',
+    statePlaceholder: 'Etat / Province / Region',
     zipPlaceholder: 'Code postal',
-    phonePlaceholder: 'Telephone',
     submit: 'Envoyer la commande',
     success: 'Commande envoyee avec succes. Vous pouvez la voir dans votre compte.',
     empty: 'Ajoutez des produits au panier avant le paiement.',
     summaryTitle: 'Resume de commande',
     sizeLabel: 'Taille',
     errors: {
-      contactValue: 'Veuillez saisir votre e-mail ou numero de telephone',
-      contactFormat: 'Veuillez saisir un e-mail ou numero de telephone valide',
+      contactRequired: 'Veuillez saisir un e-mail ou un numero de telephone',
+      emailFormat: 'Veuillez saisir une adresse e-mail valide',
+      phoneFormat: 'Veuillez saisir un numero de telephone valide',
       country: 'Veuillez selectionner un pays ou une region',
       lastName: 'Veuillez saisir votre nom',
-      address: 'Veuillez saisir l adresse',
+      address: "Veuillez saisir l'adresse",
       city: 'Veuillez saisir la ville',
-      state: 'Veuillez saisir l etat ou la region',
+      state: 'Veuillez saisir la region',
       zip: 'Veuillez saisir le code postal',
       zipFormat: 'Veuillez saisir un code postal valide',
-      phone: 'Veuillez saisir le telephone',
-      phoneFormat: 'Veuillez saisir un numero de telephone valide',
     },
   },
 }
@@ -360,21 +382,27 @@ const countryOptionMap = {
   ],
 }
 
+const REGION_HINTS = {
+  France: 'Ile-de-France',
+}
+
 const submitting = ref(false)
 const successMessage = ref('')
+const addressPaste = ref('')
+const addressParseMessage = ref('')
 const errors = reactive({
-  contactValue: '',
+  email: '',
+  phone: '',
   country: '',
   lastName: '',
   address: '',
   city: '',
   state: '',
   zip: '',
-  phone: '',
 })
 
 const form = reactive({
-  contactValue: auth.user?.email || '',
+  email: auth.user?.email || '',
   marketingOptIn: false,
   country: '',
   firstName: auth.user?.name?.split(' ')[0] || '',
@@ -387,11 +415,11 @@ const form = reactive({
   phone: '',
 })
 
-const checkoutCopy = computed(() => checkoutCopyByLocale[locale.current] || checkoutCopyByLocale.zh)
-const countryOptions = computed(() => countryOptionMap[locale.current] || countryOptionMap.zh)
+const checkoutCopy = computed(() => checkoutCopyByLocale[locale.current] || checkoutCopyByLocale.en)
+const countryOptions = computed(() => countryOptionMap[locale.current] || countryOptionMap.en)
 
 const formattedSubtotal = computed(() =>
-  new Intl.NumberFormat(locale.current === 'fr' ? 'fr-FR' : locale.current === 'en' ? 'en-US' : 'zh-CN', {
+  new Intl.NumberFormat(locale.current === 'fr' ? 'fr-FR' : locale.current === 'zh' ? 'zh-CN' : 'en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
@@ -402,25 +430,65 @@ function clearFieldError(field) {
   errors[field] = ''
 }
 
-function validateContactValue() {
-  const value = form.contactValue.trim()
-  if (!value) {
-    errors.contactValue = checkoutCopy.value.errors.contactValue
+function clearContactErrors() {
+  errors.email = ''
+  errors.phone = ''
+}
+
+function clearAddressParseMessages() {
+  addressParseMessage.value = ''
+}
+
+function isEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function isPhone(value) {
+  return /^[0-9+\-\s()]{6,}$/.test(value)
+}
+
+function normalizeCountryValue(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  const match = countryOptionMap.en.find((item) => item.value.toLowerCase() === normalized)
+  return match?.value || value.trim()
+}
+
+function guessRegion(country, zip) {
+  if (country === 'France') {
+    return REGION_HINTS.France
+  }
+  return ''
+}
+
+function validateContactFields() {
+  const email = form.email.trim()
+  const phone = form.phone.trim()
+
+  clearContactErrors()
+
+  if (!email && !phone) {
+    errors.email = checkoutCopy.value.errors.contactRequired
+    errors.phone = checkoutCopy.value.errors.contactRequired
     return false
   }
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-  if (!emailOk) {
-    errors.contactValue = checkoutCopy.value.errors.contactFormat
-    return false
+
+  if (email && !isEmail(email)) {
+    errors.email = checkoutCopy.value.errors.emailFormat
   }
-  errors.contactValue = ''
-  return true
+
+  if (phone && !isPhone(phone)) {
+    errors.phone = checkoutCopy.value.errors.phoneFormat
+  }
+
+  return !errors.email && !errors.phone
 }
 
 function validateField(field) {
   const value = String(form[field] || '').trim()
 
-  if (field === 'contactValue') return validateContactValue()
+  if (field === 'email' || field === 'phone') {
+    return validateContactFields()
+  }
   if (field === 'country') {
     errors.country = value ? '' : checkoutCopy.value.errors.country
     return !errors.country
@@ -453,24 +521,86 @@ function validateField(field) {
     errors.zip = ''
     return true
   }
-  if (field === 'phone') {
-    if (!value) {
-      errors.phone = checkoutCopy.value.errors.phone
-      return false
-    }
-    if (!/^[0-9+\-\s()]{6,}$/.test(value)) {
-      errors.phone = checkoutCopy.value.errors.phoneFormat
-      return false
-    }
-    errors.phone = ''
-    return true
-  }
   return true
 }
 
 function validateForm() {
-  const fields = ['contactValue', 'country', 'lastName', 'address', 'city', 'state', 'zip', 'phone']
+  const fields = ['email', 'phone', 'country', 'lastName', 'address', 'city', 'state', 'zip']
   return fields.every((field) => validateField(field))
+}
+
+function parseZipAndCity(value) {
+  const zipFirst = value.match(/^([A-Za-z0-9-]{3,12})\s+(.+)$/)
+  if (zipFirst) {
+    return {
+      zip: zipFirst[1].trim(),
+      city: zipFirst[2].trim(),
+    }
+  }
+
+  const cityFirst = value.match(/^(.+?)\s+([A-Za-z0-9-]{3,12})$/)
+  if (cityFirst) {
+    return {
+      city: cityFirst[1].trim(),
+      zip: cityFirst[2].trim(),
+    }
+  }
+
+  return {
+    city: value.trim(),
+    zip: '',
+  }
+}
+
+function parseSmartAddress() {
+  const source = addressPaste.value.trim()
+  if (!source) {
+    addressParseMessage.value = checkoutCopy.value.parseAddressFailed
+    return
+  }
+
+  const parts = source
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (parts.length < 4) {
+    addressParseMessage.value = checkoutCopy.value.parseAddressFailed
+    return
+  }
+
+  const fullName = parts[0]
+  const country = normalizeCountryValue(parts[parts.length - 1] || '')
+  const zipCityRaw = parts[parts.length - 2] || ''
+  const middleParts = parts.slice(1, -2)
+  const apartmentIndex = middleParts.findIndex((item) =>
+    /^(apt|appt|apartment|suite|unit|room|floor|#)/i.test(item)
+  )
+  const apartment = apartmentIndex >= 0 ? middleParts[apartmentIndex] : ''
+  const addressParts = middleParts.filter((_, index) => index !== apartmentIndex)
+  const address = addressParts.join(', ')
+  const { city, zip } = parseZipAndCity(zipCityRaw)
+
+  const nameParts = fullName.split(/\s+/).filter(Boolean)
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : fullName
+  const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : ''
+
+  form.firstName = firstName
+  form.lastName = lastName
+  form.address = address || form.address
+  form.apartment = apartment || form.apartment
+  form.city = city || form.city
+  form.zip = zip || form.zip
+  form.country = country || form.country
+  form.state = guessRegion(country, zip) || form.state
+
+  clearFieldError('country')
+  clearFieldError('lastName')
+  clearFieldError('address')
+  clearFieldError('city')
+  clearFieldError('state')
+  clearFieldError('zip')
+  addressParseMessage.value = checkoutCopy.value.parseAddressSuccess
 }
 
 async function handleSubmit() {
@@ -483,7 +613,7 @@ async function handleSubmit() {
   try {
     const order = await catalog.createOrder({
       contact: {
-        value: form.contactValue,
+        value: form.email,
         marketingOptIn: form.marketingOptIn,
       },
       delivery: {
@@ -509,7 +639,7 @@ async function handleSubmit() {
 
     cart.clear()
     successMessage.value = checkoutCopy.value.success
-    router.push('/account')
+    router.push('/account/orders')
   } finally {
     submitting.value = false
   }

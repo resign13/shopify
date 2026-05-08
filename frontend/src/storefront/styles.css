@@ -720,11 +720,6 @@ textarea {
   font-size: 0.96rem;
 }
 
-.product-compare-price {
-  color: var(--muted);
-  text-decoration: line-through;
-}
-
 .home-promo-shell {
   position: relative;
   overflow: hidden;
@@ -1481,6 +1476,18 @@ textarea {
 .checkout-stack {
   display: grid;
   gap: 14px;
+}
+
+.checkout-smart-parser {
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.checkout-smart-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .checkout-grid-span {

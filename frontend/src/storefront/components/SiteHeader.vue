@@ -99,16 +99,18 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 import { useLocaleStore } from '../stores/locale'
+import { useCatalogStore } from '../stores/catalog'
 
 const auth = useAuthStore()
 const cart = useCartStore()
 const locale = useLocaleStore()
+const catalog = useCatalogStore()
 
 const navByLocale = {
   zh: {
@@ -161,43 +163,26 @@ const navByLocale = {
   },
 }
 
-const labelByLocale = {
-  zh: {
-    womenswear: 'WOMENSWEAR',
-    menswear: 'MENSWEAR',
-    pants: 'PANTS',
-    denim: 'DENIM',
-    outerwear: 'OUTERWEAR',
-  },
-  en: {
-    womenswear: 'WOMENSWEAR',
-    menswear: 'MENSWEAR',
-    pants: 'PANTS',
-    denim: 'DENIM',
-    outerwear: 'OUTERWEAR',
-  },
-  fr: {
-    womenswear: 'WOMENSWEAR',
-    menswear: 'MENSWEAR',
-    pants: 'PANTS',
-    denim: 'DENIM',
-    outerwear: 'OUTERWEAR',
-  },
-}
-
 const navCopy = computed(() => navByLocale[locale.current] || navByLocale.en)
-const labels = computed(() => labelByLocale[locale.current] || labelByLocale.en)
 const dropdownSections = computed(() => [
   {
     title: 'CATEGORIES',
-    items: [
-      { label: labels.value.womenswear, to: '/shop?category=womenswear' },
-      { label: labels.value.menswear, to: '/shop?category=menswear' },
-      { label: labels.value.pants, to: '/shop?category=pants' },
-      { label: labels.value.outerwear, to: '/shop?category=outerwear' },
-    ],
+    items: (catalog.categories || []).map((item) => ({
+      label: item.label || item.key,
+      to: `/shop${item.key ? `?category=${item.key}` : ''}`,
+    })),
   },
 ])
+
+async function ensureCategoriesLoaded() {
+  if (!auth.isAuthenticated) return
+  if ((catalog.categories || []).length) return
+  await catalog.loadHome(locale.current)
+}
+
+onMounted(() => {
+  ensureCategoriesLoaded()
+})
 
 async function handleLogout() {
   await auth.logout()

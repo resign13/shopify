@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <header class="site-header">
     <div class="container header-inner">
       <RouterLink class="brand brand-wordmark" :to="auth.isAuthenticated ? '/home' : '/login'">
@@ -145,23 +145,7 @@ const navByLocale = {
     orders: 'Orders',
     checkout: 'Cart',
   },
-  fr: {
-    dropdownText: 'Explore the full GINGTTO catalog by category.',
-    shop: 'SHOP',
-    bestSeller: 'BEST SELLER',
-    newArrival: 'NEW ARRIVAL',
-    preOrder: 'PRE-ORDER',
-    about: 'ABOUT',
-    contact: 'CONTACT',
-    viewAll: 'VIEW ALL PRODUCTS',
-    login: 'Connexion',
-    logout: 'Quitter',
-    search: 'Recherche',
-    account: 'Compte',
-    orders: 'Commandes',
-    checkout: 'Panier',
-  },
-}
+  }
 
 const navCopy = computed(() => navByLocale[locale.current] || navByLocale.en)
 const dropdownSections = computed(() => [

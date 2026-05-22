@@ -235,15 +235,7 @@ const brandStoryByLocale = {
     ],
     quote: 'Designed for modern wardrobes, built for lasting business.',
   },
-  fr: {
-    paragraphs: [
-      'GINGTTO est ne d une vision a long terme du vestiaire moderne. Nous pensons qu un bon produit ne doit pas seulement suivre une tendance passagere, mais trouver un vrai point d equilibre entre coupe, matiere, couleur, confort et stabilite d approvisionnement. C est pour cette raison que la marque ne s est jamais limitee a une seule famille de produits et qu elle rassemble aujourd hui menswear et womenswear dans une structure plus complete.',
-      'Sur le plan produit, GINGTTO privilegie une base de styles durables et repetables. Qu il s agisse de pantalons adaptes au quotidien, de tops aux lignes plus nettes, de denim capable de soutenir une rotation reguliere, ou d outerwear pense pour les transitions de saison, l objectif est de proposer des pieces qui ne sont pas seulement visuellement fortes, mais aussi commercialement solides. Pour les acheteurs, cela signifie une lecture plus claire du catalogue et une construction de collection plus efficace.',
-      'La marque accorde egalement une grande importance a la presentation. Nous voulons que le client comprenne rapidement l univers GINGTTO des son entree sur le site, au lieu de voir seulement une suite d images produit sans lien. C est pourquoi la homepage relie direction visuelle, navigation par categorie, modules best-seller et new-arrival, informations de stock et parcours de commande dans un meme flux. Le storefront devient ainsi un outil de vente, mais aussi un premier niveau de confiance entre la marque et ses clients.',
-    ],
-    quote: 'Designed for modern wardrobes, built for lasting business.',
-  },
-}
+  }
 
 const conciseBrandStoryByLocale = {
   zh: {
@@ -260,14 +252,7 @@ const conciseBrandStoryByLocale = {
     ],
     quote: 'Modern apparel, steady supply.',
   },
-  fr: {
-    paragraphs: [
-      'GINGTTO se concentre sur un vestiaire moderne avec des lignes plus nettes, une offre plus stable et une presentation plus coherente pour menswear et womenswear.',
-      'Le storefront aide les acheteurs a comprendre rapidement la marque, parcourir les categories essentielles et avancer plus facilement entre stock visible et commande.',
-    ],
-    quote: 'Modern apparel, steady supply.',
-  },
-}
+  }
 
 const copyByLocale = {
   zh: {
@@ -360,52 +345,7 @@ const copyByLocale = {
       outerwear: 'Sets, jackets and layers',
     },
   },
-  fr: {
-    title: 'Une boutique apparel moderne pour femme et homme',
-    storyTitle: 'Brand Story',
-    storyText: 'GINGTTO adopte une structure de homepage plus premium pour montrer les bannières, les categories et trois blocs produits dans un flux plus net.',
-    storyQuote: 'Modern apparel, stable supply, stronger presentation.',
-    strengthCards: [
-      { title: 'Homepage geree en back-office', text: 'Les bannières hero, la bande categorie et les 3 modules produits sont configures depuis l admin.' },
-      { title: 'Femme + Homme', text: 'La homepage couvre ensemble womenswear, menswear, pants, denim et outerwear.' },
-      { title: 'Commande sync admin', text: 'Le panier et le checkout restent relies au back-office pour le suivi.' },
-    ],
-    tabs: {
-      bestSeller: 'BEST SELLER',
-      newArrival: 'NEW ARRIVAL',
-      specialPrice: 'PRE-ORDER',
-    },
-    sectionTitles: {
-      bestSeller: 'BEST SELLER',
-      newArrival: 'NEW ARRIVAL',
-      specialPrice: 'PRE-ORDER',
-    },
-    fallbackOverlines: {
-      bestSeller: 'BEST SELLER',
-      newArrival: 'NEW ARRIVAL',
-      specialPrice: 'PRE-ORDER',
-    },
-    fallbackTitles: {
-      bestSeller: 'Mettez en avant vos meilleurs best-sellers',
-      newArrival: 'Montrez clairement les nouveautés de la saison',
-      specialPrice: 'Utilisez les prix speciaux pour accelerer la conversion',
-    },
-    fallbackTexts: {
-      bestSeller: 'Guide les acheteurs du hero vers le bloc produit le plus fort.',
-      newArrival: 'Gardez la homepage dynamique avec un bloc nouveautes.',
-      specialPrice: 'Un bloc promotionnel dedie aide a pousser les ventes.',
-    },
-    shopNow: 'SHOP NOW',
-    viewAll: 'Voir tout',
-    categoryCaptions: {
-      womenswear: 'Blouses et tops premium',
-      menswear: 'Tees et polos essentiels',
-      pants: 'Coupes tailorees et detendues',
-      denim: 'Denim du quotidien',
-      outerwear: 'Vestes, sets et couches',
-    },
-  },
-}
+  }
 
 const categoryMedia = {
   womenswear: '/media/storefront/womenswear-blouse-1.jpg',

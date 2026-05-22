@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import re
@@ -31,7 +31,7 @@ def load_env_file(path: Path) -> None:
 
 load_env_file(BASE_DIR / ".env")
 
-from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import check_password_hash
 
@@ -58,8 +58,9 @@ CORS(app)
 
 F = TypeVar("F", bound=Callable[..., Any])
 DATA_DIR = BASE_DIR / "data"
+UPLOAD_DIR = BASE_DIR / "uploads"
 SESSIONS_FILE = DATA_DIR / "sessions.json"
-SUPPORTED_LANGS = {"zh", "en", "fr"}
+SUPPORTED_LANGS = {"zh", "en"}
 DEFAULT_LANG = "zh"
 HOME_SECTION_KEYS = ("bestSeller", "newArrival", "specialPrice")
 
@@ -74,12 +75,17 @@ def write_json(path: Path, payload: Any) -> None:
 
 def ensure_storage() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     if not SESSIONS_FILE.exists():
         write_json(SESSIONS_FILE, [])
 
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def build_upload_url(filename: str) -> str:
+    return f"{request.url_root.rstrip('/')}/uploads/{filename}"
 
 
 def pick_language() -> str:
@@ -191,9 +197,9 @@ def build_homepage_payload(lang: str) -> dict[str, Any]:
     ]
 
     stats = [
-        {"label": {"zh": "在线 SKU", "en": "Live SKUs", "fr": "SKU en ligne"}[lang], "value": str(count_products())},
+        {"label": {"zh": "在线 SKU", "en": "Live SKUs"}[lang], "value": str(count_products())},
         {
-            "label": {"zh": "现货库存", "en": "Units in stock", "fr": "Unites en stock"}[lang],
+            "label": {"zh": "现货库存", "en": "Units in stock"}[lang],
             "value": str(count_units_in_stock()),
         },
     ]
@@ -372,6 +378,31 @@ def collection_products(section_slug: str) -> Any:
     return jsonify(payload)
 
 
+@app.get("/uploads/<path:filename>")
+def serve_upload(filename: str) -> Any:
+    return send_from_directory(UPLOAD_DIR, filename)
+
+
+@app.post("/api/order-attachments")
+@require_auth
+def upload_order_attachment() -> Any:
+    file = request.files.get("file")
+    if not file or not str(file.filename or "").strip():
+        return jsonify({"message": "Missing file"}), 400
+    filename = str(file.filename or "").strip()
+    if not filename.lower().endswith(".pdf"):
+        return jsonify({"message": "Only PDF files are allowed"}), 400
+    file.stream.seek(0, 2)
+    size = file.stream.tell()
+    file.stream.seek(0)
+    if size > 10 * 1024 * 1024:
+        return jsonify({"message": "PDF file must be 10MB or smaller"}), 400
+    safe_name = f"{secrets.token_hex(8)}_{Path(filename).name}"
+    target = UPLOAD_DIR / safe_name
+    file.save(target)
+    return jsonify({"url": build_upload_url(safe_name), "filename": filename})
+
+
 @app.post("/api/orders")
 @require_auth
 def create_order_route() -> Any:
@@ -431,6 +462,7 @@ def create_order_route() -> Any:
                 "zip": zip_code,
                 "shippingAddress": ", ".join(part for part in [address, apartment, city, state, zip_code, country] if part),
                 "note": str(payload.get("note", "")).strip(),
+                "labelPdfUrl": str(payload.get("labelPdfUrl", "")).strip(),
             }
         )
     except (TypeError, ValueError, KeyError):

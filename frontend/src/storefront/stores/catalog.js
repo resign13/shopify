@@ -147,6 +147,21 @@ export const useCatalogStore = defineStore('catalog', {
         this.orderSubmitting = false
       }
     },
+    async uploadOrderAttachment(file) {
+      this.error = ''
+      const formData = new FormData()
+      formData.append('file', file)
+      try {
+        return await request('/api/order-attachments', {
+          method: 'POST',
+          headers: this.authHeaders(),
+          body: formData,
+        })
+      } catch (error) {
+        this.error = error.message || 'Attachment upload failed'
+        return null
+      }
+    },
     async loadMyOrders(query = '') {
       const auth = useAuthStore()
       if (!auth.token) {

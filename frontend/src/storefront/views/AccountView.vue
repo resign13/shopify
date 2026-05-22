@@ -96,24 +96,7 @@ const copyByLocale = {
     shopTitle: 'Continue Shopping',
     shopText: 'Go back to the storefront and keep browsing products.',
   },
-  fr: {
-    overline: 'BUYER CENTER',
-    title: 'Centre utilisateur',
-    subtitle: 'Consultez le compte acheteur et accedez ensuite aux commandes ou au catalogue.',
-    buyer: 'Acheteur',
-    company: 'Societe',
-    email: 'E-mail',
-    status: 'Statut',
-    active: 'Actif',
-    quickOverline: 'QUICK ACCESS',
-    quickTitle: 'Acces rapide',
-    quickText: 'Les informations du compte et les commandes sont maintenant sur deux pages separees.',
-    ordersTitle: 'Centre de commandes',
-    ordersText: 'Consultez les commandes, filtrez par statut et ouvrez le detail.',
-    shopTitle: 'Continuer les achats',
-    shopText: 'Retournez au catalogue et continuez a parcourir les produits.',
-  },
-}
+  }
 
 const copy = computed(() => copyByLocale[locale.current] || copyByLocale.en)
 </script>

@@ -166,6 +166,40 @@
               </div>
             </div>
 
+            <div class="checkout-section">
+              <div class="checkout-section-head">
+                <h2>{{ checkoutCopy.customizationTitle }}</h2>
+              </div>
+
+              <div class="checkout-stack">
+                <textarea
+                  v-model.trim="form.note"
+                  class="field textarea"
+                  :placeholder="checkoutCopy.notePlaceholder"
+                />
+
+                <div class="checkout-upload-row">
+                  <input
+                    ref="attachmentInput"
+                    class="field"
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    :disabled="uploadingAttachment"
+                    @change="handleAttachmentChange"
+                  />
+                  <span class="helper">
+                    {{
+                      uploadingAttachment
+                        ? checkoutCopy.uploadingAttachment
+                        : form.labelPdfName
+                          ? `${checkoutCopy.uploadedAttachment} ${form.labelPdfName}`
+                          : checkoutCopy.attachmentHelp
+                    }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <p v-if="catalog.error" class="error-text">{{ catalog.error }}</p>
             <p v-if="successMessage" class="success-text">{{ successMessage }}</p>
 
@@ -234,6 +268,7 @@ const cart = useCartStore()
 const catalog = useCatalogStore()
 const locale = useLocaleStore()
 const router = useRouter()
+const attachmentInput = ref(null)
 
 const checkoutCopyByLocale = {
   zh: {
@@ -256,6 +291,11 @@ const checkoutCopyByLocale = {
     cityPlaceholder: '城市',
     statePlaceholder: '省 / 州 / 区域',
     zipPlaceholder: '邮编',
+    customizationTitle: '订单备注与换标 PDF',
+    notePlaceholder: '填写订单备注（选填）',
+    attachmentHelp: '上传 1 个换标 PDF（选填，最大 10MB）',
+    uploadingAttachment: '正在上传 PDF...',
+    uploadedAttachment: '已上传：',
     submit: '提交订单',
     success: '订单提交成功，已同步到用户中心。',
     empty: '请先添加商品后再结算。',
@@ -294,6 +334,11 @@ const checkoutCopyByLocale = {
     cityPlaceholder: 'City',
     statePlaceholder: 'State / Province / Region',
     zipPlaceholder: 'ZIP / Postal code',
+    customizationTitle: 'Order Note & Label PDF',
+    notePlaceholder: 'Add a note for this order (optional)',
+    attachmentHelp: 'Upload one replacement-label PDF (optional, max 10MB)',
+    uploadingAttachment: 'Uploading PDF...',
+    uploadedAttachment: 'Uploaded:',
     submit: 'Submit Order',
     success: 'Order submitted successfully. You can review it in your account.',
     empty: 'Please add products to your cart before checkout.',
@@ -312,45 +357,7 @@ const checkoutCopyByLocale = {
       zipFormat: 'Please enter a valid ZIP or postal code',
     },
   },
-  fr: {
-    title: 'Paiement',
-    contactTitle: 'Contact',
-    emailPlaceholder: 'E-mail (optionnel si telephone rempli)',
-    phonePlaceholder: 'Telephone (optionnel si e-mail rempli)',
-    deliveryTitle: 'Adresse de livraison',
-    smartAddressTitle: 'Remplissage intelligent',
-    smartAddressPlaceholder:
-      "Collez une adresse complete, par exemple : Yacine Belkedrouci, 7 Avenue de l'Appel du 18 Juin 1940, Appt A22, 77100 Meaux, France",
-    parseAddress: 'Remplir automatiquement',
-    parseAddressSuccess: "L'adresse a ete repartie dans les champs ci-dessus.",
-    parseAddressFailed: "L'adresse n'a pas pu etre reconnue completement. Veuillez corriger manuellement.",
-    countryPlaceholder: 'Pays / Region',
-    firstNamePlaceholder: 'Prenom (optionnel)',
-    lastNamePlaceholder: 'Nom',
-    addressPlaceholder: 'Adresse',
-    apartmentPlaceholder: 'Appartement, suite, etc. (optionnel)',
-    cityPlaceholder: 'Ville',
-    statePlaceholder: 'Etat / Province / Region',
-    zipPlaceholder: 'Code postal',
-    submit: 'Envoyer la commande',
-    success: 'Commande envoyee avec succes. Vous pouvez la voir dans votre compte.',
-    empty: 'Ajoutez des produits au panier avant le paiement.',
-    summaryTitle: 'Resume de commande',
-    sizeLabel: 'Taille',
-    errors: {
-      contactRequired: 'Veuillez saisir un e-mail ou un numero de telephone',
-      emailFormat: 'Veuillez saisir une adresse e-mail valide',
-      phoneFormat: 'Veuillez saisir un numero de telephone valide',
-      country: 'Veuillez selectionner un pays ou une region',
-      lastName: 'Veuillez saisir votre nom',
-      address: "Veuillez saisir l'adresse",
-      city: 'Veuillez saisir la ville',
-      state: 'Veuillez saisir la region',
-      zip: 'Veuillez saisir le code postal',
-      zipFormat: 'Veuillez saisir un code postal valide',
-    },
-  },
-}
+  }
 
 const countryOptionMap = {
   zh: [
@@ -371,15 +378,6 @@ const countryOptionMap = {
     { value: 'Germany', label: 'Germany' },
     { value: 'Australia', label: 'Australia' },
   ],
-  fr: [
-    { value: 'China', label: 'Chine' },
-    { value: 'United States', label: 'Etats-Unis' },
-    { value: 'France', label: 'France' },
-    { value: 'United Kingdom', label: 'Royaume-Uni' },
-    { value: 'Canada', label: 'Canada' },
-    { value: 'Germany', label: 'Allemagne' },
-    { value: 'Australia', label: 'Australie' },
-  ],
 }
 
 const REGION_HINTS = {
@@ -387,6 +385,7 @@ const REGION_HINTS = {
 }
 
 const submitting = ref(false)
+const uploadingAttachment = ref(false)
 const successMessage = ref('')
 const addressPaste = ref('')
 const addressParseMessage = ref('')
@@ -413,13 +412,16 @@ const form = reactive({
   state: '',
   zip: '',
   phone: '',
+  note: '',
+  labelPdfUrl: '',
+  labelPdfName: '',
 })
 
 const checkoutCopy = computed(() => checkoutCopyByLocale[locale.current] || checkoutCopyByLocale.en)
 const countryOptions = computed(() => countryOptionMap[locale.current] || countryOptionMap.en)
 
 const formattedSubtotal = computed(() =>
-  new Intl.NumberFormat(locale.current === 'fr' ? 'fr-FR' : locale.current === 'zh' ? 'zh-CN' : 'en-US', {
+  new Intl.NumberFormat(locale.current === 'zh' ? 'zh-CN' : 'en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
@@ -603,6 +605,29 @@ function parseSmartAddress() {
   addressParseMessage.value = checkoutCopy.value.parseAddressSuccess
 }
 
+async function handleAttachmentChange(event) {
+  const file = event?.target?.files?.[0]
+  if (!file) return
+  if (!/\.pdf$/i.test(file.name)) {
+    window.alert('仅支持上传 PDF 文件')
+    if (attachmentInput.value) attachmentInput.value.value = ''
+    return
+  }
+  uploadingAttachment.value = true
+  catalog.clearMessages()
+  try {
+    const result = await catalog.uploadOrderAttachment(file)
+    if (!result?.url) {
+      if (attachmentInput.value) attachmentInput.value.value = ''
+      return
+    }
+    form.labelPdfUrl = result.url
+    form.labelPdfName = result.filename || file.name
+  } finally {
+    uploadingAttachment.value = false
+  }
+}
+
 async function handleSubmit() {
   if (!cart.items.length || !validateForm()) return
 
@@ -632,7 +657,8 @@ async function handleSubmit() {
         sizeCode: item.sizeCode,
         quantity: item.quantity,
       })),
-      note: '',
+      note: form.note,
+      labelPdfUrl: form.labelPdfUrl,
     })
 
     if (!order) return

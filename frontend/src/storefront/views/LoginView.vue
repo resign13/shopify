@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <section class="login-page simple-login-page">
     <div class="container simple-login-layout">
       <aside class="simple-brand-card">
@@ -69,19 +69,7 @@ const loginByLocale = {
     brandText: 'GINGTTO now presents womenswear, menswear, pants, denim and outerwear with a cleaner homepage, richer media and a cart-based checkout flow.',
     brandPills: ['Womenswear', 'Menswear', 'Cart checkout'],
   },
-  fr: {
-    overline: 'BUYER ACCESS',
-    title: 'Connexion client GINGTTO',
-    text: 'Connectez-vous pour voir la homepage, les categories, le detail produit, le panier et le paiement.',
-    protectedNotice: 'Cette page est disponible apres connexion.',
-    email: 'E-mail',
-    password: 'Mot de passe',
-    submit: 'Se connecter',
-    brandTitle: 'Une boutique apparel premium pour femme et homme',
-    brandText: 'GINGTTO couvre maintenant womenswear, menswear, pants, denim et outerwear avec une homepage plus riche et un paiement via panier.',
-    brandPills: ['Womenswear', 'Menswear', 'Cart checkout'],
-  },
-}
+  }
 
 const loginCopy = computed(() => loginByLocale[locale.current] || loginByLocale.en)
 

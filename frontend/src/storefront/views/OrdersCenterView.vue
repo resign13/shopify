@@ -98,6 +98,17 @@
                   <strong>{{ order.paymentLink ? copy.paymentReady : copy.paymentWaiting }}</strong>
                 </div>
                 <div>
+                  <span>{{ copy.noteLabel }}</span>
+                  <strong>{{ order.note || '--' }}</strong>
+                </div>
+                <div>
+                  <span>{{ copy.labelPdfLabel }}</span>
+                  <strong v-if="order.labelPdfUrl">
+                    <a :href="order.labelPdfUrl" target="_blank" rel="noreferrer">{{ copy.viewLabelPdf }}</a>
+                  </strong>
+                  <strong v-else>--</strong>
+                </div>
+                <div>
                   <span>{{ copy.itemsSubtotalLabel }}</span>
                   <strong>{{ formatCurrency(itemsSubtotal(order)) }}</strong>
                 </div>
@@ -208,6 +219,9 @@ const copy = {
   paymentLabel: 'Payment',
   paymentReady: 'Payment link available',
   paymentWaiting: 'Awaiting payment link',
+  noteLabel: 'Order Note',
+  labelPdfLabel: 'Label PDF',
+  viewLabelPdf: 'View PDF',
   itemsSubtotalLabel: 'Items Subtotal',
   shippingFeeLabel: 'Shipping Fee',
   orderTotalLabel: 'Order Total',

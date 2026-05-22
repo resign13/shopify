@@ -144,15 +144,7 @@ const paginationCopyByLocale = {
     itemLabel: 'products',
     itemLabelDisplay: 'Products',
   },
-  fr: {
-    prev: 'Prec.',
-    next: 'Suiv.',
-    of: 'sur',
-    perPage: 'Par page',
-    itemLabel: 'produits',
-    itemLabelDisplay: 'Produits',
-  },
-}
+  }
 
 const paginationLabels = computed(
   () => paginationCopyByLocale[locale.current] || paginationCopyByLocale.en

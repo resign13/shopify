@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <footer id="contact" class="site-footer">
     <div class="site-footer-dark">
       <div class="container footer-dark-grid">
@@ -90,22 +90,7 @@ const footerByLocale = {
     enter: 'Enter Store',
     copyright: '© 2026 GINGTTO',
   },
-  fr: {
-    aboutLabel: 'ABOUT US',
-    aboutText: 'GINGTTO presente womenswear, menswear et essentiels mode avec stock stable, visuels premium et un parcours storefront-to-checkout plus propre.',
-    infoLabel: 'INFORMATIONS',
-    infoLinks: ['Payment Policy', 'Privacy Policy', 'Shipping Policy', 'Terms & Conditions'],
-    serviceLabel: 'CUSTOMER SERVICES',
-    serviceLinks: ['About GINGTTO', 'Contact Us', 'Why Choose Us?', 'Return & Refund Policy'],
-    contactLabel: 'CONTACT',
-    email: 'business@gingtto.com',
-    phone: '+86 20 8888 6688',
-    address: 'Guangzhou, China',
-    login: 'Connexion',
-    enter: 'Entrer',
-    copyright: '© 2026 GINGTTO',
-  },
-}
+  }
 
 const footerCopy = computed(() => footerByLocale[locale.current] || footerByLocale.en)
 </script>

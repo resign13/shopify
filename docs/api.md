@@ -1,4 +1,4 @@
-﻿# Gingtto Storefront API
+# Gingtto Storefront API
 
 ## 基础信息
 
@@ -27,7 +27,7 @@
 ### `GET /api/home`
 
 查询参数:
-- `lang`: `zh | en | fr`
+- `lang`: `zh | en`
 
 返回字段:
 - `banners[]`
@@ -75,7 +75,7 @@
 ### `GET /api/products`
 
 查询参数:
-- `lang`: `zh | en | fr`
+- `lang`: `zh | en`
 - `category`: 分类 key
 - `keyword`: 商品名称模糊搜索关键字
 
@@ -116,7 +116,7 @@
 ### `GET /api/products/:slug`
 
 查询参数:
-- `lang`: `zh | en | fr`
+- `lang`: `zh | en`
 
 响应示例:
 ```json
@@ -204,7 +204,8 @@
       "quantity": 5
     }
   ],
-  "note": ""
+  "note": "",
+  "labelPdfUrl": ""
 }
 ```
 
@@ -226,6 +227,23 @@
 - `delivery.zip`
 - `delivery.phone`
 - `items[]`
+
+## 8.1 上传订单附件
+
+### `POST /api/order-attachments`
+
+说明:
+- 需要登录
+- 仅支持上传 1 个 PDF 文件
+- 文件大小限制 10MB
+
+响应示例:
+```json
+{
+  "url": "https://example.com/uploads/abc.pdf",
+  "filename": "label.pdf"
+}
+```
 
 ## 9. 我的订单
 
@@ -260,6 +278,8 @@
 - `items[].shippingAddress`
 - `items[].marketingOptIn`
 - `items[].trackingNo`
+- `items[].note`
+- `items[].labelPdfUrl`
 - `items[].paymentLink`
 - `items[].shippedAt`
 - `items[].completedAt`

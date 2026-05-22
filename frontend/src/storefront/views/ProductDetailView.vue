@@ -249,18 +249,7 @@ const detailCopyByLocale = {
     sizeChartTitle: 'Size Chart',
     descriptionImageTitle: 'Description Image',
   },
-  fr: {
-    colorLabel: 'Couleur',
-    codeLabel: 'Code',
-    basePriceLabel: 'Prix de base',
-    tierTitle: 'Prix par palier',
-    tierHint: 'Plus la quantite est grande, meilleur est le prix',
-    quantityLabel: 'Quantite',
-    quantityHint: 'Choisissez directement la quantite a commander',
-    sizeChartTitle: 'Guide des tailles',
-    descriptionImageTitle: 'Description produit',
-  },
-}
+  }
 
 const detailCopy = computed(() => detailCopyByLocale[locale.current] || detailCopyByLocale.en)
 
@@ -315,7 +304,7 @@ const stockText = computed(() => {
 })
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat(locale.current === 'fr' ? 'fr-FR' : locale.current === 'en' ? 'en-US' : 'zh-CN', {
+  return new Intl.NumberFormat(locale.current === 'en' ? 'en-US' : 'zh-CN', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,

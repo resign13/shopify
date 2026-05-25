@@ -26,7 +26,7 @@
     </div>
 
     <template v-else-if="catalog.currentProduct">
-        <div class="container product-detail-layout">
+      <div class="container product-detail-layout">
         <div class="product-gallery-column">
           <div class="product-main-image">
             <LazyImage :src="activeImage" :alt="catalog.currentProduct.name" eager fit="contain" natural-height />
@@ -73,7 +73,8 @@
                 :key="tier.label"
                 :class="['detail-tier-pill', { active: tier.active }]"
                 type="button"
-                @click="selectedQuantity = tier.minQty"
+                :disabled="!canPurchase"
+                @click="selectedQuantity = Math.min(tier.minQty, maxSelectableQuantity)"
               >
                 <span class="detail-tier-pill-range">{{ tier.label }}</span>
                 <strong>{{ formatCurrency(tier.price) }}</strong>
@@ -119,6 +120,17 @@
                 {{ size }}
               </button>
             </div>
+
+            <div class="detail-stock-banner" :class="stockBannerClass">
+              <div class="detail-stock-copy">
+                <strong>{{ detailCopy.stockLabel }}</strong>
+                <span>{{ detailCopy.stockSubtext }}</span>
+              </div>
+              <div class="detail-stock-value">
+                <strong>{{ selectedSizeStock }}</strong>
+                <span>{{ stockText }}</span>
+              </div>
+            </div>
           </div>
 
           <div class="detail-option-group detail-quantity-section">
@@ -129,29 +141,30 @@
 
             <div class="detail-quantity-card">
               <div class="detail-quantity-stepper">
-                <button type="button" class="detail-qty-button" @click="decreaseQuantity">-</button>
+                <button type="button" class="detail-qty-button" :disabled="!canPurchase" @click="decreaseQuantity">-</button>
                 <input
                   v-model.number="selectedQuantity"
                   class="detail-qty-input"
                   type="number"
                   min="1"
-                  :max="catalog.currentProduct.stock"
+                  :max="maxSelectableQuantity"
+                  :disabled="!canPurchase"
                   @change="normalizeQuantity"
                 />
-                <button type="button" class="detail-qty-button" @click="increaseQuantity">+</button>
+                <button type="button" class="detail-qty-button" :disabled="!canPurchase" @click="increaseQuantity">+</button>
               </div>
               <div class="detail-quantity-meta">
                 <strong>{{ formatCurrency(activeTierPrice) }}</strong>
-                <span>{{ stockText }}</span>
+                <span>{{ detailCopy.selectedSizeLabel }} {{ selectedSizeLabel }}</span>
               </div>
             </div>
           </div>
 
           <div class="detail-action-row detail-action-row-elevated">
-            <button class="detail-action-button secondary" type="button" @click="addToCart">
+            <button class="detail-action-button secondary" type="button" :disabled="!canPurchase" @click="addToCart">
               {{ locale.t('common.addToCart') }}
             </button>
-            <button class="detail-action-button primary" type="button" @click="buyNow">
+            <button class="detail-action-button primary" type="button" :disabled="!canPurchase" @click="buyNow">
               {{ locale.t('common.buyNow') }}
             </button>
           </div>
@@ -226,32 +239,21 @@ const thumbSkeletons = [1, 2, 3, 4]
 const sizeSkeletons = [1, 2, 3, 4, 5]
 const benefitSkeletons = [1, 2, 3, 4]
 
-const detailCopyByLocale = {
-  zh: {
-    colorLabel: '颜色',
-    codeLabel: '款号',
-    basePriceLabel: '尺码基础价',
-    tierTitle: '阶梯价格',
-    tierHint: '数量越高，单价越优',
-    quantityLabel: '下单数量',
-    quantityHint: '支持直接选择采购数量',
-    sizeChartTitle: '尺码表图',
-    descriptionImageTitle: '商品信息描述图',
-  },
-  en: {
-    colorLabel: 'Color',
-    codeLabel: 'Code',
-    basePriceLabel: 'Base price',
-    tierTitle: 'Tier Pricing',
-    tierHint: 'Higher quantity, better unit price',
-    quantityLabel: 'Quantity',
-    quantityHint: 'Choose the purchase quantity directly',
-    sizeChartTitle: 'Size Chart',
-    descriptionImageTitle: 'Description Image',
-  },
-  }
-
-const detailCopy = computed(() => detailCopyByLocale[locale.current] || detailCopyByLocale.en)
+const detailCopy = {
+  colorLabel: 'Color',
+  codeLabel: 'Code',
+  basePriceLabel: 'Base price',
+  tierTitle: 'Tier Pricing',
+  tierHint: 'Higher quantity, better unit price',
+  stockLabel: 'Selected size stock',
+  stockSubtext: 'Inventory for the current color and size',
+  selectedSizeLabel: 'Selected size:',
+  quantityLabel: 'Quantity',
+  quantityHint: 'Adjust quantity before adding to cart',
+  sizeChartTitle: 'Size Chart',
+  descriptionImageTitle: 'Description Image',
+  outOfStock: 'Out of stock',
+}
 
 const productGallery = computed(() => {
   if (!catalog.currentProduct) return []
@@ -261,13 +263,22 @@ const productGallery = computed(() => {
 const colorOptions = computed(() => catalog.currentProduct?.colorOptions || [])
 const selectedColorLabel = computed(() => catalog.currentProduct?.colorName || '--')
 
-const selectedSizePrice = computed(() => {
+const selectedSizeRecord = computed(() => {
   const sizePrices = catalog.currentProduct?.sizePrices || []
-  const found = sizePrices.find((item) => item.sizeCode === selectedSize.value)
-  return Number(found?.price ?? catalog.currentProduct?.price ?? 0)
+  if (!sizePrices.length) return null
+  return sizePrices.find((item) => item.sizeCode === selectedSize.value) || null
 })
 
+const selectedSizePrice = computed(() => Number(selectedSizeRecord.value?.price ?? catalog.currentProduct?.price ?? 0))
+const selectedSizeStock = computed(() => {
+  if (!catalog.currentProduct) return 0
+  const sizePrices = catalog.currentProduct.sizePrices || []
+  if (!sizePrices.length) return Number(catalog.currentProduct.stock ?? 0)
+  return Number(selectedSizeRecord.value?.stock ?? 0)
+})
 const selectedSizeLabel = computed(() => selectedSize.value || '--')
+const canPurchase = computed(() => selectedSizeStock.value > 0)
+const maxSelectableQuantity = computed(() => Math.max(1, selectedSizeStock.value || 1))
 
 const displayPriceTiers = computed(() => {
   const tiers = catalog.currentProduct?.priceTiers || []
@@ -294,17 +305,20 @@ const displayPriceTiers = computed(() => {
 })
 
 const activeTier = computed(() => displayPriceTiers.value.find((tier) => tier.active) || displayPriceTiers.value[0])
-const activeTierLabel = computed(() => `${detailCopy.value.quantityLabel}: ${activeTier.value?.label || '1-99'}`)
+const activeTierLabel = computed(() => `${detailCopy.quantityLabel}: ${activeTier.value?.label || '1-99'}`)
 const activeTierPrice = computed(() => activeTier.value?.price || selectedSizePrice.value)
-
+const stockBannerClass = computed(() => ({
+  'is-low': canPurchase.value && selectedSizeStock.value <= 100,
+  'is-out': !canPurchase.value,
+}))
 const stockText = computed(() => {
   if (!catalog.currentProduct) return ''
-  const base = catalog.currentProduct.stock <= 100 ? locale.t('detail.lowStock') : locale.t('detail.readyStock')
-  return `${base} | ${catalog.currentProduct.stock}`
+  if (!canPurchase.value) return detailCopy.outOfStock
+  return selectedSizeStock.value <= 100 ? locale.t('detail.lowStock') : locale.t('detail.readyStock')
 })
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat(locale.current === 'en' ? 'en-US' : 'zh-CN', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
@@ -313,17 +327,23 @@ function formatCurrency(value) {
 }
 
 function normalizeQuantity() {
-  const max = Number(catalog.currentProduct?.stock || 1)
+  if (!canPurchase.value) {
+    selectedQuantity.value = 1
+    return
+  }
+  const max = Number(selectedSizeStock.value || 1)
   const value = Number(selectedQuantity.value || 1)
   selectedQuantity.value = Math.max(1, Math.min(value, max))
 }
 
 function decreaseQuantity() {
+  if (!canPurchase.value) return
   selectedQuantity.value = Math.max(1, Number(selectedQuantity.value || 1) - 1)
 }
 
 function increaseQuantity() {
-  const max = Number(catalog.currentProduct?.stock || 1)
+  if (!canPurchase.value) return
+  const max = Number(selectedSizeStock.value || 1)
   selectedQuantity.value = Math.min(max, Number(selectedQuantity.value || 1) + 1)
 }
 
@@ -341,12 +361,13 @@ function handleColorChange(option) {
 }
 
 function addToCart() {
-  if (!catalog.currentProduct) return
+  if (!catalog.currentProduct || !canPurchase.value) return
   normalizeQuantity()
   cart.addItem(
     {
       ...catalog.currentProduct,
       basePrice: selectedSizePrice.value,
+      stock: selectedSizeStock.value,
     },
     selectedQuantity.value,
     selectedSize.value
@@ -354,12 +375,13 @@ function addToCart() {
 }
 
 function buyNow() {
-  if (!catalog.currentProduct) return
+  if (!catalog.currentProduct || !canPurchase.value) return
   normalizeQuantity()
   cart.setSingleItem(
     {
       ...catalog.currentProduct,
       basePrice: selectedSizePrice.value,
+      stock: selectedSizeStock.value,
     },
     selectedQuantity.value,
     selectedSize.value
@@ -379,6 +401,10 @@ watch(
   },
   { immediate: true }
 )
+
+watch(selectedSizeStock, () => {
+  normalizeQuantity()
+})
 
 watch(() => route.params.slug, loadDetail)
 watch(() => locale.current, loadDetail)

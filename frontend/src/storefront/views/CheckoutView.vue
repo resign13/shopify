@@ -270,115 +270,59 @@ const locale = useLocaleStore()
 const router = useRouter()
 const attachmentInput = ref(null)
 
-const checkoutCopyByLocale = {
-  zh: {
-    title: '结算',
-    contactTitle: '联系方式',
-    emailPlaceholder: '邮箱（可选，手机号与邮箱填写任意一个即可）',
-    phonePlaceholder: '手机号（可选，手机号与邮箱填写任意一个即可）',
-    deliveryTitle: '收货地址',
-    smartAddressTitle: '智能拆分地址',
-    smartAddressPlaceholder:
-      "粘贴完整地址，例如：Yacine Belkedrouci, 7 Avenue de l'Appel du 18 Juin 1940, Appt A22, 77100 Meaux, France",
-    parseAddress: '智能拆分',
-    parseAddressSuccess: '地址已自动拆分到上方字段。',
-    parseAddressFailed: '未能完整识别地址，请检查后手动调整。',
-    countryPlaceholder: '国家 / 地区',
-    firstNamePlaceholder: '名字（选填）',
-    lastNamePlaceholder: '姓氏',
-    addressPlaceholder: '详细地址',
-    apartmentPlaceholder: '公寓、楼层、门牌号（选填）',
-    cityPlaceholder: '城市',
-    statePlaceholder: '省 / 州 / 区域',
-    zipPlaceholder: '邮编',
-    customizationTitle: '订单备注与换标 PDF',
-    notePlaceholder: '填写订单备注（选填）',
-    attachmentHelp: '上传 1 个换标 PDF（选填，最大 10MB）',
-    uploadingAttachment: '正在上传 PDF...',
-    uploadedAttachment: '已上传：',
-    submit: '提交订单',
-    success: '订单提交成功，已同步到用户中心。',
-    empty: '请先添加商品后再结算。',
-    summaryTitle: '订单摘要',
-    sizeLabel: '尺码',
-    errors: {
-      contactRequired: '邮箱和手机号至少填写一个',
-      emailFormat: '请输入有效的邮箱地址',
-      phoneFormat: '请输入有效的手机号',
-      country: '请选择国家 / 地区',
-      lastName: '请填写姓氏',
-      address: '请填写详细地址',
-      city: '请填写城市',
-      state: '请填写省 / 州 / 区域',
-      zip: '请填写邮编',
-      zipFormat: '请输入有效的邮编',
-    },
+const checkoutCopy = computed(() => ({
+  title: 'Checkout',
+  contactTitle: 'Contact',
+  emailPlaceholder: 'Email (optional if phone is filled)',
+  phonePlaceholder: 'Phone number (optional if email is filled)',
+  deliveryTitle: 'Delivery Address',
+  smartAddressTitle: 'Smart Address Fill',
+  smartAddressPlaceholder:
+    "Paste a full address, for example: Yacine Belkedrouci, 7 Avenue de l'Appel du 18 Juin 1940, Appt A22, 77100 Meaux, France",
+  parseAddress: 'Auto Fill Address',
+  parseAddressSuccess: 'The address has been split into the fields above.',
+  parseAddressFailed: 'We could not fully parse this address. Please adjust the fields manually.',
+  countryPlaceholder: 'Country / Region',
+  firstNamePlaceholder: 'First name (optional)',
+  lastNamePlaceholder: 'Last name',
+  addressPlaceholder: 'Address',
+  apartmentPlaceholder: 'Apartment, suite, etc. (optional)',
+  cityPlaceholder: 'City',
+  statePlaceholder: 'State / Province / Region',
+  zipPlaceholder: 'ZIP / Postal code',
+  customizationTitle: 'Order Note & Label PDF',
+  notePlaceholder: 'Add a note for this order (optional)',
+  attachmentHelp: 'Upload one replacement-label PDF (optional, max 10MB)',
+  uploadingAttachment: 'Uploading PDF...',
+  uploadedAttachment: 'Uploaded:',
+  submit: 'Submit Order',
+  success: 'Order submitted successfully. You can review it in your account.',
+  empty: 'Please add products to your cart before checkout.',
+  summaryTitle: 'Order Summary',
+  sizeLabel: 'Size',
+  errors: {
+    contactRequired: 'Please enter either an email or a phone number',
+    emailFormat: 'Please enter a valid email address',
+    phoneFormat: 'Please enter a valid phone number',
+    country: 'Please select a country or region',
+    lastName: 'Please enter your last name',
+    address: 'Please enter the address',
+    city: 'Please enter the city',
+    state: 'Please enter the state, province, or region',
+    zip: 'Please enter the ZIP or postal code',
+    zipFormat: 'Please enter a valid ZIP or postal code',
   },
-  en: {
-    title: 'Checkout',
-    contactTitle: 'Contact',
-    emailPlaceholder: 'Email (optional if phone is filled)',
-    phonePlaceholder: 'Phone number (optional if email is filled)',
-    deliveryTitle: 'Delivery Address',
-    smartAddressTitle: 'Smart Address Fill',
-    smartAddressPlaceholder:
-      "Paste a full address, for example: Yacine Belkedrouci, 7 Avenue de l'Appel du 18 Juin 1940, Appt A22, 77100 Meaux, France",
-    parseAddress: 'Auto Fill Address',
-    parseAddressSuccess: 'The address has been split into the fields above.',
-    parseAddressFailed: 'We could not fully parse this address. Please adjust the fields manually.',
-    countryPlaceholder: 'Country / Region',
-    firstNamePlaceholder: 'First name (optional)',
-    lastNamePlaceholder: 'Last name',
-    addressPlaceholder: 'Address',
-    apartmentPlaceholder: 'Apartment, suite, etc. (optional)',
-    cityPlaceholder: 'City',
-    statePlaceholder: 'State / Province / Region',
-    zipPlaceholder: 'ZIP / Postal code',
-    customizationTitle: 'Order Note & Label PDF',
-    notePlaceholder: 'Add a note for this order (optional)',
-    attachmentHelp: 'Upload one replacement-label PDF (optional, max 10MB)',
-    uploadingAttachment: 'Uploading PDF...',
-    uploadedAttachment: 'Uploaded:',
-    submit: 'Submit Order',
-    success: 'Order submitted successfully. You can review it in your account.',
-    empty: 'Please add products to your cart before checkout.',
-    summaryTitle: 'Order Summary',
-    sizeLabel: 'Size',
-    errors: {
-      contactRequired: 'Please enter either an email or a phone number',
-      emailFormat: 'Please enter a valid email address',
-      phoneFormat: 'Please enter a valid phone number',
-      country: 'Please select a country or region',
-      lastName: 'Please enter your last name',
-      address: 'Please enter the address',
-      city: 'Please enter the city',
-      state: 'Please enter the state, province, or region',
-      zip: 'Please enter the ZIP or postal code',
-      zipFormat: 'Please enter a valid ZIP or postal code',
-    },
-  },
-  }
+}))
 
-const countryOptionMap = {
-  zh: [
-    { value: 'China', label: '中国' },
-    { value: 'United States', label: '美国' },
-    { value: 'France', label: '法国' },
-    { value: 'United Kingdom', label: '英国' },
-    { value: 'Canada', label: '加拿大' },
-    { value: 'Germany', label: '德国' },
-    { value: 'Australia', label: '澳大利亚' },
-  ],
-  en: [
-    { value: 'China', label: 'China' },
-    { value: 'United States', label: 'United States' },
-    { value: 'France', label: 'France' },
-    { value: 'United Kingdom', label: 'United Kingdom' },
-    { value: 'Canada', label: 'Canada' },
-    { value: 'Germany', label: 'Germany' },
-    { value: 'Australia', label: 'Australia' },
-  ],
-}
+const countryOptions = computed(() => [
+  { value: 'China', label: 'China' },
+  { value: 'United States', label: 'United States' },
+  { value: 'France', label: 'France' },
+  { value: 'United Kingdom', label: 'United Kingdom' },
+  { value: 'Canada', label: 'Canada' },
+  { value: 'Germany', label: 'Germany' },
+  { value: 'Australia', label: 'Australia' },
+])
 
 const REGION_HINTS = {
   France: 'Ile-de-France',
@@ -417,11 +361,9 @@ const form = reactive({
   labelPdfName: '',
 })
 
-const checkoutCopy = computed(() => checkoutCopyByLocale[locale.current] || checkoutCopyByLocale.en)
-const countryOptions = computed(() => countryOptionMap[locale.current] || countryOptionMap.en)
 
 const formattedSubtotal = computed(() =>
-  new Intl.NumberFormat(locale.current === 'zh' ? 'zh-CN' : 'en-US', {
+  new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
@@ -451,7 +393,7 @@ function isPhone(value) {
 
 function normalizeCountryValue(value) {
   const normalized = String(value || '').trim().toLowerCase()
-  const match = countryOptionMap.en.find((item) => item.value.toLowerCase() === normalized)
+  const match = countryOptions.value.find((item) => item.value.toLowerCase() == normalized)
   return match?.value || value.trim()
 }
 

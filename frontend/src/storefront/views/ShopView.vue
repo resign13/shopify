@@ -127,35 +127,19 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const productSkeletons = [1, 2, 3, 4, 5, 6, 7, 8]
 
-const paginationCopyByLocale = {
-  zh: {
-    prev: '上一页',
-    next: '下一页',
-    of: '共',
-    perPage: '每页',
-    itemLabel: '件商品',
-    itemLabelDisplay: '商品总数',
-  },
-  en: {
-    prev: 'Prev',
-    next: 'Next',
-    of: 'of',
-    perPage: 'Per page',
-    itemLabel: 'products',
-    itemLabelDisplay: 'Products',
-  },
-  }
-
-const paginationLabels = computed(
-  () => paginationCopyByLocale[locale.current] || paginationCopyByLocale.en
-)
+const paginationLabels = computed(() => ({
+  prev: 'Prev',
+  next: 'Next',
+  of: 'of',
+  perPage: 'Per page',
+  itemLabel: 'products',
+  itemLabelDisplay: 'Products',
+}))
 
 const sectionSlug = computed(() => route.params.sectionSlug?.toString() || '')
 const sectionKey = computed(() => sectionKeyBySlug[sectionSlug.value] || '')
 const isSectionPage = computed(() => Boolean(sectionKey.value))
-const sectionPageEyebrow = computed(() =>
-  locale.current === 'zh' ? '精选模块独立页面' : 'CURATED COLLECTION'
-)
+const sectionPageEyebrow = computed(() => 'CURATED COLLECTION')
 const sectionPageTitle = computed(() => sectionTitleByKey[sectionKey.value] || 'SHOP')
 
 const baseProducts = computed(() => {

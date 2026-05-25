@@ -59,38 +59,19 @@ import { useLocaleStore } from '../stores/locale'
 const auth = useAuthStore()
 const locale = useLocaleStore()
 
-const footerByLocale = {
-  zh: {
-    aboutLabel: 'ABOUT US',
-    aboutText: 'GINGTTO 聚焦男女装服饰、稳定库存与更接近独立站的前台展示方式，帮助客户快速浏览、加入购物车并进入结算。',
-    infoLabel: 'INFORMATIONS',
-    infoLinks: ['Payment Policy', 'Privacy Policy', 'Shipping Policy', 'Terms & Conditions'],
-    serviceLabel: 'CUSTOMER SERVICES',
-    serviceLinks: ['About GINGTTO', 'Contact Us', 'Why Choose Us?', 'Return & Refund Policy'],
-    contactLabel: 'CONTACT',
-    email: 'business@gingtto.com',
-    phone: '+86 20 8888 6688',
-    address: 'Guangzhou, China',
-    login: '登录',
-    enter: '进入商城',
-    copyright: '© 2026 GINGTTO',
-  },
-  en: {
-    aboutLabel: 'ABOUT US',
-    aboutText: 'GINGTTO focuses on womenswear, menswear and fashion essentials with stable stock, premium visuals and a cleaner storefront-to-checkout flow.',
-    infoLabel: 'INFORMATIONS',
-    infoLinks: ['Payment Policy', 'Privacy Policy', 'Shipping Policy', 'Terms & Conditions'],
-    serviceLabel: 'CUSTOMER SERVICES',
-    serviceLinks: ['About GINGTTO', 'Contact Us', 'Why Choose Us?', 'Return & Refund Policy'],
-    contactLabel: 'CONTACT',
-    email: 'business@gingtto.com',
-    phone: '+86 20 8888 6688',
-    address: 'Guangzhou, China',
-    login: 'Sign In',
-    enter: 'Enter Store',
-    copyright: '© 2026 GINGTTO',
-  },
-  }
-
-const footerCopy = computed(() => footerByLocale[locale.current] || footerByLocale.en)
+const footerCopy = computed(() => ({
+  aboutLabel: 'ABOUT US',
+  aboutText: 'GINGTTO focuses on womenswear, menswear and fashion essentials with stable stock, premium visuals and a cleaner storefront-to-checkout flow.',
+  infoLabel: 'INFORMATION',
+  infoLinks: ['Payment Policy', 'Privacy Policy', 'Shipping Policy', 'Terms & Conditions'],
+  serviceLabel: 'CUSTOMER SERVICES',
+  serviceLinks: ['About GINGTTO', 'Contact Us', 'Why Choose Us?', 'Return & Refund Policy'],
+  contactLabel: 'CONTACT',
+  email: 'business@gingtto.com',
+  phone: '+86 20 8888 6688',
+  address: 'Guangzhou, China',
+  login: 'Sign In',
+  enter: 'Enter Store',
+  copyright: '© 2026 GINGTTO',
+}))
 </script>

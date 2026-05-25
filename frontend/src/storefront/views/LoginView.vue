@@ -44,34 +44,18 @@ const locale = useLocaleStore()
 const route = useRoute()
 const router = useRouter()
 
-const loginByLocale = {
-  zh: {
-    overline: 'BUYER ACCESS',
-    title: 'GINGTTO 买家登录',
-    text: '登录后查看首页、商品分类、产品详情、购物车与结算页面。',
-    protectedNotice: '当前页面需要先登录后查看。',
-    email: '邮箱',
-    password: '密码',
-    submit: '登录进入商城',
-    brandTitle: '一个同时展示女装与男装的高级服饰商城',
-    brandText: 'GINGTTO 现在覆盖 womenswear、menswear、pants、denim 与 outerwear，并以更完整的独立站方式组织首页海报、分类卡片与购物车结算。',
-    brandPills: ['Womenswear', 'Menswear', 'Cart checkout'],
-  },
-  en: {
-    overline: 'BUYER ACCESS',
-    title: 'GINGTTO Buyer Login',
-    text: 'Sign in to view the homepage, category browsing, product detail, cart and checkout.',
-    protectedNotice: 'This page is available after login.',
-    email: 'Email',
-    password: 'Password',
-    submit: 'Login to Continue',
-    brandTitle: 'A premium apparel storefront for womenswear and menswear',
-    brandText: 'GINGTTO now presents womenswear, menswear, pants, denim and outerwear with a cleaner homepage, richer media and a cart-based checkout flow.',
-    brandPills: ['Womenswear', 'Menswear', 'Cart checkout'],
-  },
-  }
-
-const loginCopy = computed(() => loginByLocale[locale.current] || loginByLocale.en)
+const loginCopy = computed(() => ({
+  overline: 'BUYER ACCESS',
+  title: 'GINGTTO Buyer Login',
+  text: 'Sign in to view the homepage, category browsing, product detail, cart and checkout.',
+  protectedNotice: 'This page is available after login.',
+  email: 'Email',
+  password: 'Password',
+  submit: 'Login to Continue',
+  brandTitle: 'A premium apparel storefront for womenswear and menswear',
+  brandText: 'GINGTTO now presents womenswear, menswear, pants, denim and outerwear with a cleaner homepage, richer media and a cart-based checkout flow.',
+  brandPills: ['Womenswear', 'Menswear', 'Cart checkout'],
+}))
 
 const form = reactive({
   email: '',

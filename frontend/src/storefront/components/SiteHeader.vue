@@ -52,14 +52,6 @@
       <div v-else class="header-spacer"></div>
 
       <div class="header-actions">
-        <label class="lang-select">
-          <select :value="locale.current" @change="locale.setLanguage($event.target.value)">
-            <option v-for="item in locale.supported" :key="item.code" :value="item.code">
-              {{ item.label }}
-            </option>
-          </select>
-        </label>
-
         <RouterLink v-if="!auth.isAuthenticated" class="text-action" to="/login">
           {{ navCopy.login }}
         </RouterLink>
@@ -112,42 +104,23 @@ const cart = useCartStore()
 const locale = useLocaleStore()
 const catalog = useCatalogStore()
 
-const navByLocale = {
-  zh: {
-    dropdownText: 'Explore the full GINGTTO catalog by category.',
-    shop: 'SHOP',
-    bestSeller: 'BEST SELLER',
-    newArrival: 'NEW ARRIVAL',
-    preOrder: 'PRE-ORDER',
-    about: 'ABOUT',
-    contact: 'CONTACT',
-    viewAll: 'VIEW ALL PRODUCTS',
-    login: '登录',
-    logout: '退出登录',
-    search: '搜索',
-    account: '用户中心',
-    orders: '订单中心',
-    checkout: '购物车',
-  },
-  en: {
-    dropdownText: 'Explore the full GINGTTO catalog by category.',
-    shop: 'SHOP',
-    bestSeller: 'BEST SELLER',
-    newArrival: 'NEW ARRIVAL',
-    preOrder: 'PRE-ORDER',
-    about: 'ABOUT',
-    contact: 'CONTACT',
-    viewAll: 'VIEW ALL PRODUCTS',
-    login: 'Sign In',
-    logout: 'Logout',
-    search: 'Search',
-    account: 'Account',
-    orders: 'Orders',
-    checkout: 'Cart',
-  },
-  }
+const navCopy = {
+  dropdownText: 'Explore the full GINGTTO catalog by category.',
+  shop: 'SHOP',
+  bestSeller: 'BEST SELLER',
+  newArrival: 'NEW ARRIVAL',
+  preOrder: 'PRE-ORDER',
+  about: 'ABOUT',
+  contact: 'CONTACT',
+  viewAll: 'VIEW ALL PRODUCTS',
+  login: 'Sign In',
+  logout: 'Logout',
+  search: 'Search',
+  account: 'Account',
+  orders: 'Orders',
+  checkout: 'Cart',
+}
 
-const navCopy = computed(() => navByLocale[locale.current] || navByLocale.en)
 const dropdownSections = computed(() => [
   {
     title: 'CATEGORIES',
@@ -161,7 +134,7 @@ const dropdownSections = computed(() => [
 async function ensureCategoriesLoaded() {
   if (!auth.isAuthenticated) return
   if ((catalog.categories || []).length) return
-  await catalog.loadHome(locale.current)
+  await catalog.loadHome('en')
 }
 
 onMounted(() => {

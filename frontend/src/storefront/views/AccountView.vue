@@ -61,42 +61,21 @@ import { useLocaleStore } from '../stores/locale'
 const auth = useAuthStore()
 const locale = useLocaleStore()
 
-const copyByLocale = {
-  zh: {
-    overline: 'BUYER CENTER',
-    title: '用户中心',
-    subtitle: '查看当前商城账号资料，并从这里进入订单中心或继续选品。',
-    buyer: '联系人',
-    company: '公司',
-    email: '邮箱',
-    status: '状态',
-    active: '正常',
-    quickOverline: 'QUICK ACCESS',
-    quickTitle: '快捷入口',
-    quickText: '订单和账号资料现在已经分成两个独立页面。',
-    ordersTitle: '订单中心',
-    ordersText: '查看订单、筛选状态、取消未发货订单与查看详情。',
-    shopTitle: '继续选品',
-    shopText: '返回商城分类页，继续浏览商品并加入购物车。',
-  },
-  en: {
-    overline: 'BUYER CENTER',
-    title: 'User Center',
-    subtitle: 'Review the current buyer account and jump into orders or product browsing.',
-    buyer: 'Buyer',
-    company: 'Company',
-    email: 'Email',
-    status: 'Status',
-    active: 'Active',
-    quickOverline: 'QUICK ACCESS',
-    quickTitle: 'Quick Access',
-    quickText: 'Account details and order management now live on separate pages.',
-    ordersTitle: 'Order Center',
-    ordersText: 'View orders, filter by status, pay pending orders and cancel them before shipment.',
-    shopTitle: 'Continue Shopping',
-    shopText: 'Go back to the storefront and keep browsing products.',
-  },
-  }
-
-const copy = computed(() => copyByLocale[locale.current] || copyByLocale.en)
+const copy = computed(() => ({
+  overline: 'BUYER CENTER',
+  title: 'User Center',
+  subtitle: 'Review the current buyer account and jump into orders or product browsing.',
+  buyer: 'Buyer',
+  company: 'Company',
+  email: 'Email',
+  status: 'Status',
+  active: 'Active',
+  quickOverline: 'QUICK ACCESS',
+  quickTitle: 'Quick Access',
+  quickText: 'Account details and order management now live on separate pages.',
+  ordersTitle: 'Order Center',
+  ordersText: 'View orders, filter by status, pay pending orders and cancel them before shipment.',
+  shopTitle: 'Continue Shopping',
+  shopText: 'Go back to the storefront and keep browsing products.',
+}))
 </script>

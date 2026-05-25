@@ -84,6 +84,9 @@ export const useCartStore = defineStore('cart', {
       return hydrateItem(item)
     },
     addItem(product, quantity = 1, sizeCode = '') {
+      const availableStock = Math.max(0, Number(product.stock ?? 0))
+      if (availableStock <= 0) return
+
       const lineKey = `${product.id}:${sizeCode || ''}`
       const existing = this.items.find((item) => item.lineKey === lineKey)
       const basePayload = {
@@ -92,10 +95,10 @@ export const useCartStore = defineStore('cart', {
         name: product.name,
         image: product.image,
         sku: product.sku,
-        stock: product.stock,
+        stock: availableStock,
         sizeCode,
         sizeLabel: sizeCode,
-        quantity: Math.min(quantity, product.stock),
+        quantity: Math.min(quantity, availableStock),
         basePrice: product.basePrice ?? product.price,
         priceTiers: product.priceTiers || [],
         colorName: product.colorName || '',
@@ -103,7 +106,7 @@ export const useCartStore = defineStore('cart', {
       }
 
       if (existing) {
-        const nextQuantity = Math.min(existing.quantity + quantity, product.stock)
+        const nextQuantity = Math.min(existing.quantity + quantity, availableStock)
         Object.assign(
           existing,
           this.syncItemPricing({

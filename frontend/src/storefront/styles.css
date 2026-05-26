@@ -2237,33 +2237,26 @@ textarea {
   background: #f5f5f5;
 }
 
-.detail-stock-copy,
-.detail-stock-value {
-  display: grid;
-  gap: 6px;
+.detail-stock-label {
+  font-size: 1.02rem;
+  font-weight: 700;
 }
 
-.detail-stock-copy strong {
-  font-size: 1.05rem;
+.detail-stock-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: flex-end;
 }
 
-.detail-stock-copy span {
-  color: var(--muted);
-}
-
-.detail-stock-value {
-  justify-items: end;
-  text-align: right;
-}
-
-.detail-stock-number {
-  font-size: clamp(2rem, 2.6vw, 2.6rem);
-  line-height: 1;
-  font-weight: 800;
+.detail-stock-amount {
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .detail-stock-status {
-  font-weight: 700;
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .detail-stock-banner.is-out .detail-stock-status {
@@ -2288,8 +2281,8 @@ textarea {
     align-items: start;
   }
 
-  .detail-stock-value {
-    justify-items: start;
-    text-align: left;
+  .detail-stock-inline {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }

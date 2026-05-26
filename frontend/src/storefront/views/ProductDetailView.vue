@@ -122,12 +122,9 @@
             </div>
 
             <div class="detail-stock-banner" :class="stockBannerClass">
-              <div class="detail-stock-copy">
-                <strong>{{ detailCopy.stockLabel }}</strong>
-                <span>{{ detailCopy.stockSubtext }}</span>
-              </div>
-              <div class="detail-stock-value">
-                <span class="detail-stock-number">{{ selectedSizeStock }}</span>
+              <span class="detail-stock-label">{{ detailCopy.stockLabel }}</span>
+              <div class="detail-stock-inline">
+                <span class="detail-stock-amount">{{ selectedSizeStock }}</span>
                 <span class="detail-stock-status">{{ stockText }}</span>
               </div>
             </div>
@@ -264,7 +261,6 @@ const detailCopy = {
   tierTitle: 'Tier Pricing',
   tierHint: 'Higher quantity, better unit price',
   stockLabel: 'Available Stock',
-  stockSubtext: 'Exact stock for the selected color and size',
   selectedSizeLabel: 'Selected size:',
   quantityLabel: 'Quantity',
   quantityHint: 'Adjust quantity before adding to cart',

@@ -2219,48 +2219,17 @@ textarea {
 
 .detail-stock-banner {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  gap: 18px;
-  padding: 18px 20px;
-  border: 1px solid #111;
-  background: #fff;
-}
-
-.detail-stock-banner.is-low {
-  border-color: #ff8f1f;
-  background: #fff7eb;
-}
-
-.detail-stock-banner.is-out {
-  border-color: var(--line-strong);
-  background: #f5f5f5;
-}
-
-.detail-stock-label {
-  font-size: 1.02rem;
-  font-weight: 700;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .detail-stock-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-  justify-content: flex-end;
-}
-
-.detail-stock-amount {
   font-size: 1rem;
-  font-weight: 700;
-}
-
-.detail-stock-status {
-  color: var(--muted);
   font-weight: 600;
-}
-
-.detail-stock-banner.is-out .detail-stock-status {
-  color: #b14930;
+  text-align: right;
 }
 
 .detail-quantity-meta span {
@@ -2278,11 +2247,10 @@ textarea {
 
 @media (max-width: 760px) {
   .detail-stock-banner {
-    align-items: start;
+    justify-content: flex-start;
   }
 
   .detail-stock-inline {
-    justify-content: flex-start;
-    flex-wrap: wrap;
+    text-align: left;
   }
 }

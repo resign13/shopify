@@ -121,12 +121,8 @@
               </button>
             </div>
 
-            <div class="detail-stock-banner" :class="stockBannerClass">
-              <span class="detail-stock-label">{{ detailCopy.stockLabel }}</span>
-              <div class="detail-stock-inline">
-                <span class="detail-stock-amount">{{ selectedSizeStock }}</span>
-                <span class="detail-stock-status">{{ stockText }}</span>
-              </div>
+            <div class="detail-stock-banner">
+              <span class="detail-stock-inline">{{ detailCopy.stockLabel }}: {{ selectedSizeStock }}</span>
             </div>
           </div>
 
@@ -266,7 +262,6 @@ const detailCopy = {
   quantityHint: 'Adjust quantity before adding to cart',
   sizeChartTitle: 'Size Chart',
   descriptionImageTitle: 'Description Image',
-  outOfStock: 'Out of stock',
 }
 
 const productGallery = computed(() => {
@@ -330,15 +325,7 @@ const displayPriceTiers = computed(() => {
 const activeTier = computed(() => displayPriceTiers.value.find((tier) => tier.active) || displayPriceTiers.value[0])
 const activeTierLabel = computed(() => `${detailCopy.quantityLabel}: ${activeTier.value?.label || '1-99'}`)
 const activeTierPrice = computed(() => activeTier.value?.price || selectedSizePrice.value)
-const stockBannerClass = computed(() => ({
-  'is-low': canPurchase.value && selectedSizeStock.value <= 100,
-  'is-out': !canPurchase.value,
-}))
-const stockText = computed(() => {
-  if (!catalog.currentProduct) return ''
-  if (!canPurchase.value) return detailCopy.outOfStock
-  return selectedSizeStock.value <= 100 ? locale.t('detail.lowStock') : locale.t('detail.readyStock')
-})
+
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('en-US', {

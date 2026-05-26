@@ -46,7 +46,7 @@
         </div>
 
         <div class="product-buy-column">
-          <p class="detail-category">{{ catalog.currentProduct.categoryLabel }}</p>
+          <p class="detail-category">{{ categoryLabel }}</p>
           <h1>{{ catalog.currentProduct.name }}</h1>
 
           <div class="detail-price-stack">
@@ -127,8 +127,8 @@
                 <span>{{ detailCopy.stockSubtext }}</span>
               </div>
               <div class="detail-stock-value">
-                <strong>{{ selectedSizeStock }}</strong>
-                <span>{{ stockText }}</span>
+                <span class="detail-stock-number">{{ selectedSizeStock }}</span>
+                <span class="detail-stock-status">{{ stockText }}</span>
               </div>
             </div>
           </div>
@@ -225,6 +225,24 @@ import { useCartStore } from '../stores/cart'
 import { useCatalogStore } from '../stores/catalog'
 import { useLocaleStore } from '../stores/locale'
 
+const CATEGORY_LABELS = {
+  womenswear: 'Womenswear',
+  menswear: 'Menswear',
+  pants: 'Pants',
+  denim: 'Denim',
+  outerwear: 'Outerwear',
+  shirts: 'Shirts',
+  tops: 'Tops',
+  accessories: 'Accessories',
+}
+
+function titleCaseFromKey(value) {
+  return String(value || '')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 const route = useRoute()
 const router = useRouter()
 const cart = useCartStore()
@@ -245,8 +263,8 @@ const detailCopy = {
   basePriceLabel: 'Base price',
   tierTitle: 'Tier Pricing',
   tierHint: 'Higher quantity, better unit price',
-  stockLabel: 'Selected size stock',
-  stockSubtext: 'Inventory for the current color and size',
+  stockLabel: 'Available Stock',
+  stockSubtext: 'Exact stock for the selected color and size',
   selectedSizeLabel: 'Selected size:',
   quantityLabel: 'Quantity',
   quantityHint: 'Adjust quantity before adding to cart',
@@ -262,6 +280,15 @@ const productGallery = computed(() => {
 
 const colorOptions = computed(() => catalog.currentProduct?.colorOptions || [])
 const selectedColorLabel = computed(() => catalog.currentProduct?.colorName || '--')
+const categoryLabel = computed(() => {
+  const key = String(catalog.currentProduct?.categoryKey || '').trim().toLowerCase()
+  if (key && CATEGORY_LABELS[key]) return CATEGORY_LABELS[key]
+
+  const raw = String(catalog.currentProduct?.categoryLabel || '').trim()
+  if (raw && /^[\x00-\x7F]+$/.test(raw)) return raw
+  if (key) return titleCaseFromKey(key)
+  return 'Category'
+})
 
 const selectedSizeRecord = computed(() => {
   const sizePrices = catalog.currentProduct?.sizePrices || []

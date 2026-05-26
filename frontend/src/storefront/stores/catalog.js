@@ -8,6 +8,43 @@ import {
 } from '../imageOverrides'
 import { useAuthStore } from './auth'
 
+
+function normalizeCategoryLabel(item = {}) {
+  const key = String(item?.key || item?.categoryKey || '').trim().toLowerCase()
+  const labels = {
+    womenswear: 'Womenswear',
+    menswear: 'Menswear',
+    pants: 'Pants',
+    denim: 'Denim',
+    outerwear: 'Outerwear',
+    shirts: 'Shirts',
+    tops: 'Tops',
+    accessories: 'Accessories',
+  }
+  const fallback = key
+    ? key.replace(/[-_]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+    : 'Category'
+  return {
+    ...item,
+    label: labels[key] || item?.label || fallback,
+    categoryLabel: labels[key] || item?.categoryLabel || item?.label || fallback,
+  }
+}
+
+function normalizeProductCategory(item = {}) {
+  const normalized = normalizeCategoryLabel({
+    key: item.categoryKey,
+    categoryKey: item.categoryKey,
+    label: item.categoryLabel,
+    categoryLabel: item.categoryLabel,
+  })
+  return {
+    ...item,
+    categoryLabel: normalized.categoryLabel,
+  }
+}
+
+
 export const useCatalogStore = defineStore('catalog', {
   state: () => ({
     banners: [],
@@ -56,16 +93,16 @@ export const useCatalogStore = defineStore('catalog', {
         this.banners = data.banners
         this.featured = data.featured || data.sections?.bestSeller || []
         this.homeSections = {
-          bestSeller: data.sections?.bestSeller || [],
-          newArrival: data.sections?.newArrival || [],
-          specialPrice: data.sections?.specialPrice || [],
+          bestSeller: (data.sections?.bestSeller || []).map((item) => normalizeProductCategory(item)),
+          newArrival: (data.sections?.newArrival || []).map((item) => normalizeProductCategory(item)),
+          specialPrice: (data.sections?.specialPrice || []).map((item) => normalizeProductCategory(item)),
         }
         this.collectionSections = {
-          bestSeller: data.collectionSections?.bestSeller || [],
-          newArrival: data.collectionSections?.newArrival || [],
-          specialPrice: data.collectionSections?.specialPrice || [],
+          bestSeller: (data.collectionSections?.bestSeller || []).map((item) => normalizeProductCategory(item)),
+          newArrival: (data.collectionSections?.newArrival || []).map((item) => normalizeProductCategory(item)),
+          specialPrice: (data.collectionSections?.specialPrice || []).map((item) => normalizeProductCategory(item)),
         }
-        this.categories = data.categories
+        this.categories = (data.categories || []).map((item) => normalizeCategoryLabel(item))
         this.stats = data.stats
       } catch (error) {
         this.error = error.message || 'Home load failed'
@@ -83,7 +120,7 @@ export const useCatalogStore = defineStore('catalog', {
             headers: this.authHeaders(),
           }
         )
-        this.collectionSections[data.sectionKey] = data.items || []
+        this.collectionSections[data.sectionKey] = (data.items || []).map((item) => normalizeProductCategory(item))
       } catch (error) {
         this.error = error.message || 'Collection load failed'
       } finally {
@@ -102,7 +139,7 @@ export const useCatalogStore = defineStore('catalog', {
           headers: this.authHeaders(),
         })
         const data = applyProductsImageOverrides(raw)
-        this.products = data.items
+        this.products = (data.items || []).map((item) => normalizeProductCategory(item))
       } catch (error) {
         this.error = error.message || 'Product load failed'
       } finally {
@@ -117,8 +154,8 @@ export const useCatalogStore = defineStore('catalog', {
           headers: this.authHeaders(),
         })
         const data = applyProductDetailImageOverrides(raw)
-        this.currentProduct = data.product
-        this.related = data.related
+        this.currentProduct = normalizeProductCategory(data.product || {})
+        this.related = (data.related || []).map((item) => normalizeProductCategory(item))
       } catch (error) {
         this.currentProduct = null
         this.related = []

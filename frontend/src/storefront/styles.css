@@ -2215,3 +2215,81 @@ textarea {
 
 
 
+
+
+.detail-stock-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid #111;
+  background: #fff;
+}
+
+.detail-stock-banner.is-low {
+  border-color: #ff8f1f;
+  background: #fff7eb;
+}
+
+.detail-stock-banner.is-out {
+  border-color: var(--line-strong);
+  background: #f5f5f5;
+}
+
+.detail-stock-copy,
+.detail-stock-value {
+  display: grid;
+  gap: 6px;
+}
+
+.detail-stock-copy strong {
+  font-size: 1.05rem;
+}
+
+.detail-stock-copy span {
+  color: var(--muted);
+}
+
+.detail-stock-value {
+  justify-items: end;
+  text-align: right;
+}
+
+.detail-stock-number {
+  font-size: clamp(2rem, 2.6vw, 2.6rem);
+  line-height: 1;
+  font-weight: 800;
+}
+
+.detail-stock-status {
+  font-weight: 700;
+}
+
+.detail-stock-banner.is-out .detail-stock-status {
+  color: #b14930;
+}
+
+.detail-quantity-meta span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.detail-tier-pill:disabled,
+.detail-qty-button:disabled,
+.detail-qty-input:disabled,
+.detail-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (max-width: 760px) {
+  .detail-stock-banner {
+    align-items: start;
+  }
+
+  .detail-stock-value {
+    justify-items: start;
+    text-align: left;
+  }
+}

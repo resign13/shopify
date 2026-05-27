@@ -183,7 +183,7 @@
                     ref="attachmentInput"
                     class="field"
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                    accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp"
                     multiple
                     :disabled="uploadingAttachment || form.labelImages.length >= 5"
                     @change="handleAttachmentChange"
@@ -200,10 +200,15 @@
                 </div>
                 <div v-if="form.labelImages.length" class="checkout-attachment-list">
                   <article v-for="(image, index) in form.labelImages" :key="image.url" class="checkout-attachment-item">
-                    <a :href="image.url" target="_blank" rel="noreferrer">
-                      <img :src="image.url" :alt="image.filename || `Remark image ${index + 1}`" />
+                    <a :href="image.url" target="_blank" rel="noreferrer" class="checkout-attachment-link">
+                      <img
+                        v-if="isImageAttachment(image.url)"
+                        :src="image.url"
+                        :alt="image.filename || `Attachment ${index + 1}`"
+                      />
+                      <div v-else class="checkout-attachment-file">PDF</div>
                     </a>
-                    <span>{{ image.filename || `Image ${index + 1}` }}</span>
+                    <span>{{ image.filename || `Attachment ${index + 1}` }}</span>
                     <button type="button" class="text-button" @click="removeAttachment(index)">
                       {{ checkoutCopy.removeAttachment }}
                     </button>
@@ -302,11 +307,11 @@ const checkoutCopy = computed(() => ({
   cityPlaceholder: 'City',
   statePlaceholder: 'State / Province / Region',
   zipPlaceholder: 'ZIP / Postal code',
-  customizationTitle: 'Order Note & Label Images',
+  customizationTitle: 'Order Note & Attachments',
   notePlaceholder: 'Add a note for this order (optional)',
-  attachmentHelp: 'Upload up to 5 replacement-label images (optional, JPG/PNG/WebP, max 10MB each)',
-  uploadingAttachment: 'Uploading images...',
-  uploadedAttachment: 'Uploaded images:',
+  attachmentHelp: 'Upload up to 5 attachments (optional, PDF/JPG/PNG/WebP, max 10MB each)',
+  uploadingAttachment: 'Uploading attachments...',
+  uploadedAttachment: 'Uploaded attachments:',
   removeAttachment: 'Remove',
   submit: 'Submit Order',
   success: 'Order submitted successfully. You can review it in your account.',
@@ -564,16 +569,16 @@ async function handleAttachmentChange(event) {
   if (!files.length) return
   const remaining = 5 - form.labelImages.length
   if (remaining <= 0) {
-    window.alert('You can upload up to 5 images')
+    window.alert('You can upload up to 5 attachments')
     if (attachmentInput.value) attachmentInput.value.value = ''
     return
   }
   const selected = files.slice(0, remaining)
   if (files.length > remaining) {
-    window.alert('You can upload up to 5 images')
+    window.alert('You can upload up to 5 attachments')
   }
-  if (selected.some((file) => !/\.(jpe?g|png|webp)$/i.test(file.name))) {
-    window.alert('Only JPG, PNG, or WebP images are supported')
+  if (selected.some((file) => !/\.(pdf|jpe?g|png|webp)$/i.test(file.name))) {
+    window.alert('Only PDF, JPG, PNG, or WebP files are supported')
     if (attachmentInput.value) attachmentInput.value.value = ''
     return
   }
@@ -599,6 +604,10 @@ async function handleAttachmentChange(event) {
 
 function removeAttachment(index) {
   form.labelImages.splice(index, 1)
+}
+
+function isImageAttachment(url) {
+  return /\.(jpe?g|png|webp)(?:$|[?#])/i.test(String(url || ""))
 }
 
 async function handleSubmit() {

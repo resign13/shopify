@@ -2254,3 +2254,40 @@ textarea {
     text-align: left;
   }
 }
+
+
+.checkout-attachment-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.checkout-attachment-item {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(61, 43, 31, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.checkout-attachment-item img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.checkout-attachment-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+}
+
+.order-label-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -205,7 +205,7 @@
     }
   ],
   "note": "",
-  "labelPdfUrl": ""
+  "labelImageUrls": []
 }
 ```
 
@@ -234,14 +234,16 @@
 
 说明:
 - 需要登录
-- 仅支持上传 1 个 PDF 文件
+- 支持上传备注图片，最多 5 张
 - 文件大小限制 10MB
 
 响应示例:
 ```json
 {
-  "url": "https://example.com/uploads/abc.pdf",
-  "filename": "label.pdf"
+  "items": [
+    {"url": "https://example.com/uploads/abc.jpg", "filename": "label.jpg"}
+  ],
+  "urls": ["https://example.com/uploads/abc.jpg"]
 }
 ```
 
@@ -279,7 +281,7 @@
 - `items[].marketingOptIn`
 - `items[].trackingNo`
 - `items[].note`
-- `items[].labelPdfUrl`
+- `items[].labelImageUrls`
 - `items[].paymentLink`
 - `items[].shippedAt`
 - `items[].completedAt`

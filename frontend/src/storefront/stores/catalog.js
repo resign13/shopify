@@ -184,10 +184,11 @@ export const useCatalogStore = defineStore('catalog', {
         this.orderSubmitting = false
       }
     },
-    async uploadOrderAttachment(file) {
+    async uploadOrderAttachment(files) {
       this.error = ''
       const formData = new FormData()
-      formData.append('file', file)
+      const list = Array.isArray(files) ? files : [files]
+      list.forEach((file) => formData.append('files', file))
       try {
         return await request('/api/order-attachments', {
           method: 'POST',

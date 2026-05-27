@@ -77,6 +77,35 @@ def get_connection() -> Iterator[Any]:
         yield conn
 
 
+
+def _json_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item or "").strip()]
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+        except Exception:
+            return [value.strip()]
+        if isinstance(parsed, list):
+            return [str(item).strip() for item in parsed if str(item or "").strip()]
+        if isinstance(parsed, str) and parsed.strip():
+            return [parsed.strip()]
+    return []
+
+
+def _serialize_label_image_urls(value: Any, fallback: str = "") -> str:
+    urls = _json_list(value)[:5]
+    if not urls and fallback:
+        urls = [str(fallback).strip()]
+    return json.dumps(urls[:5], ensure_ascii=False)
+
+
+def _parse_label_image_urls(row: dict[str, Any]) -> list[str]:
+    urls = _json_list(row.get("label_image_urls"))[:5]
+    if not urls and str(row.get("label_pdf_url") or "").strip():
+        urls = [str(row.get("label_pdf_url") or "").strip()]
+    return urls
+
 def verify_database_connection() -> None:
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -259,6 +288,7 @@ def _apply_schema_migrations(cur: Any) -> None:
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_link TEXT")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_fee NUMERIC(12, 2) NOT NULL DEFAULT 0")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS label_pdf_url TEXT")
+    cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS label_image_urls TEXT NOT NULL DEFAULT '[]'")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMPTZ")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ")
     _migrate_order_status_values(cur)
@@ -805,6 +835,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
           o.payment_link,
           o.shipping_fee,
           o.label_pdf_url,
+          o.label_image_urls,
           o.shipped_at,
           o.completed_at,
           o.first_name,
@@ -861,6 +892,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
                 "paymentLink": row.get("payment_link") or "",
                 "shippingFee": _num(row.get("shipping_fee") or 0),
                 "labelPdfUrl": row.get("label_pdf_url") or "",
+                "labelImageUrls": _parse_label_image_urls(row),
                 "shippedAt": _iso(row["shipped_at"]) if row.get("shipped_at") else "",
                 "completedAt": _iso(row["completed_at"]) if row.get("completed_at") else "",
                 "firstName": row.get("first_name") or "",
@@ -1030,11 +1062,11 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                 """
                 INSERT INTO orders (
                   order_no, store_user_id, status, contact_name, contact_email, phone, country,
-                  shipping_address, note, label_pdf_url, total_amount, marketing_opt_in, first_name, last_name,
+                  shipping_address, note, label_pdf_url, label_image_urls, total_amount, marketing_opt_in, first_name, last_name,
                   address_line1, apartment, city, state, postal_code, created_at, updated_at
                 )
                 VALUES (
-                  %s, %s, 'pending_payment', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
+                  %s, %s, 'pending_payment', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
                 )
                 RETURNING id
                 """,
@@ -1048,6 +1080,7 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                     payload["shippingAddress"],
                     payload.get("note", ""),
                     payload.get("labelPdfUrl", ""),
+                    _serialize_label_image_urls(payload.get("labelImageUrls"), payload.get("labelPdfUrl", "")),
                     total_amount,
                     bool(payload.get("marketingOptIn")),
                     payload.get("firstName", ""),

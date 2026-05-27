@@ -102,9 +102,17 @@
                   <strong>{{ order.note || '--' }}</strong>
                 </div>
                 <div>
-                  <span>{{ copy.labelPdfLabel }}</span>
-                  <strong v-if="order.labelPdfUrl">
-                    <a :href="order.labelPdfUrl" target="_blank" rel="noreferrer">{{ copy.viewLabelPdf }}</a>
+                  <span>{{ copy.labelImagesLabel }}</span>
+                  <strong v-if="orderLabelImages(order).length" class="order-label-images">
+                    <a
+                      v-for="(imageUrl, imageIndex) in orderLabelImages(order)"
+                      :key="imageUrl"
+                      :href="imageUrl"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {{ copy.viewImage }} {{ imageIndex + 1 }}
+                    </a>
                   </strong>
                   <strong v-else>--</strong>
                 </div>
@@ -220,8 +228,8 @@ const copy = {
   paymentReady: 'Payment link available',
   paymentWaiting: 'Awaiting payment link',
   noteLabel: 'Order Note',
-  labelPdfLabel: 'Label PDF',
-  viewLabelPdf: 'View PDF',
+  labelImagesLabel: 'Label Images',
+  viewImage: 'View Image',
   itemsSubtotalLabel: 'Items Subtotal',
   shippingFeeLabel: 'Shipping Fee',
   orderTotalLabel: 'Order Total',
@@ -323,6 +331,11 @@ function formatStatus(status) {
 
 function itemsSubtotal(order) {
   return (order.items || []).reduce((sum, item) => sum + Number(item.totalPrice || 0), 0)
+}
+
+function orderLabelImages(order) {
+  if (Array.isArray(order.labelImageUrls)) return order.labelImageUrls.filter(Boolean).slice(0, 5)
+  return order.labelPdfUrl ? [order.labelPdfUrl] : []
 }
 
 function summarizeItems(items) {

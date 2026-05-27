@@ -183,19 +183,31 @@
                     ref="attachmentInput"
                     class="field"
                     type="file"
-                    accept="application/pdf,.pdf"
-                    :disabled="uploadingAttachment"
+                    accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                    multiple
+                    :disabled="uploadingAttachment || form.labelImages.length >= 5"
                     @change="handleAttachmentChange"
                   />
                   <span class="helper">
                     {{
                       uploadingAttachment
                         ? checkoutCopy.uploadingAttachment
-                        : form.labelPdfName
-                          ? `${checkoutCopy.uploadedAttachment} ${form.labelPdfName}`
+                        : form.labelImages.length
+                          ? `${checkoutCopy.uploadedAttachment} ${form.labelImages.length}/5`
                           : checkoutCopy.attachmentHelp
                     }}
                   </span>
+                </div>
+                <div v-if="form.labelImages.length" class="checkout-attachment-list">
+                  <article v-for="(image, index) in form.labelImages" :key="image.url" class="checkout-attachment-item">
+                    <a :href="image.url" target="_blank" rel="noreferrer">
+                      <img :src="image.url" :alt="image.filename || `Remark image ${index + 1}`" />
+                    </a>
+                    <span>{{ image.filename || `Image ${index + 1}` }}</span>
+                    <button type="button" class="text-button" @click="removeAttachment(index)">
+                      {{ checkoutCopy.removeAttachment }}
+                    </button>
+                  </article>
                 </div>
               </div>
             </div>
@@ -290,11 +302,12 @@ const checkoutCopy = computed(() => ({
   cityPlaceholder: 'City',
   statePlaceholder: 'State / Province / Region',
   zipPlaceholder: 'ZIP / Postal code',
-  customizationTitle: 'Order Note & Label PDF',
+  customizationTitle: 'Order Note & Label Images',
   notePlaceholder: 'Add a note for this order (optional)',
-  attachmentHelp: 'Upload one replacement-label PDF (optional, max 10MB)',
-  uploadingAttachment: 'Uploading PDF...',
-  uploadedAttachment: 'Uploaded:',
+  attachmentHelp: 'Upload up to 5 replacement-label images (optional, JPG/PNG/WebP, max 10MB each)',
+  uploadingAttachment: 'Uploading images...',
+  uploadedAttachment: 'Uploaded images:',
+  removeAttachment: 'Remove',
   submit: 'Submit Order',
   success: 'Order submitted successfully. You can review it in your account.',
   empty: 'Please add products to your cart before checkout.',
@@ -357,8 +370,7 @@ const form = reactive({
   zip: '',
   phone: '',
   note: '',
-  labelPdfUrl: '',
-  labelPdfName: '',
+  labelImages: [],
 })
 
 
@@ -548,26 +560,45 @@ function parseSmartAddress() {
 }
 
 async function handleAttachmentChange(event) {
-  const file = event?.target?.files?.[0]
-  if (!file) return
-  if (!/\.pdf$/i.test(file.name)) {
-    window.alert('仅支持上传 PDF 文件')
+  const files = Array.from(event?.target?.files || [])
+  if (!files.length) return
+  const remaining = 5 - form.labelImages.length
+  if (remaining <= 0) {
+    window.alert('You can upload up to 5 images')
+    if (attachmentInput.value) attachmentInput.value.value = ''
+    return
+  }
+  const selected = files.slice(0, remaining)
+  if (files.length > remaining) {
+    window.alert('You can upload up to 5 images')
+  }
+  if (selected.some((file) => !/\.(jpe?g|png|webp)$/i.test(file.name))) {
+    window.alert('Only JPG, PNG, or WebP images are supported')
     if (attachmentInput.value) attachmentInput.value.value = ''
     return
   }
   uploadingAttachment.value = true
   catalog.clearMessages()
   try {
-    const result = await catalog.uploadOrderAttachment(file)
-    if (!result?.url) {
-      if (attachmentInput.value) attachmentInput.value.value = ''
-      return
-    }
-    form.labelPdfUrl = result.url
-    form.labelPdfName = result.filename || file.name
+    const result = await catalog.uploadOrderAttachment(selected)
+    const uploaded = Array.isArray(result?.items)
+      ? result.items
+      : result?.url
+        ? [{ url: result.url, filename: result.filename || selected[0]?.name || '' }]
+        : []
+    uploaded.forEach((item) => {
+      if (item?.url && form.labelImages.length < 5) {
+        form.labelImages.push({ url: item.url, filename: item.filename || '' })
+      }
+    })
   } finally {
     uploadingAttachment.value = false
+    if (attachmentInput.value) attachmentInput.value.value = ''
   }
+}
+
+function removeAttachment(index) {
+  form.labelImages.splice(index, 1)
 }
 
 async function handleSubmit() {
@@ -600,7 +631,7 @@ async function handleSubmit() {
         quantity: item.quantity,
       })),
       note: form.note,
-      labelPdfUrl: form.labelPdfUrl,
+      labelImageUrls: form.labelImages.map((image) => image.url),
     })
 
     if (!order) return

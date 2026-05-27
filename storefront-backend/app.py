@@ -383,24 +383,41 @@ def serve_upload(filename: str) -> Any:
     return send_from_directory(UPLOAD_DIR, filename)
 
 
+ALLOWED_ORDER_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+ALLOWED_ORDER_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
+MAX_ORDER_IMAGE_SIZE = 10 * 1024 * 1024
+
+
 @app.post("/api/order-attachments")
 @require_auth
 def upload_order_attachment() -> Any:
-    file = request.files.get("file")
-    if not file or not str(file.filename or "").strip():
-        return jsonify({"message": "Missing file"}), 400
-    filename = str(file.filename or "").strip()
-    if not filename.lower().endswith(".pdf"):
-        return jsonify({"message": "Only PDF files are allowed"}), 400
-    file.stream.seek(0, 2)
-    size = file.stream.tell()
-    file.stream.seek(0)
-    if size > 10 * 1024 * 1024:
-        return jsonify({"message": "PDF file must be 10MB or smaller"}), 400
-    safe_name = f"{secrets.token_hex(8)}_{Path(filename).name}"
-    target = UPLOAD_DIR / safe_name
-    file.save(target)
-    return jsonify({"url": build_upload_url(safe_name), "filename": filename})
+    uploaded_files = request.files.getlist("files") or request.files.getlist("file")
+    uploaded_files = [item for item in uploaded_files if item and str(item.filename or "").strip()]
+    if not uploaded_files:
+        return jsonify({"message": "Missing image"}), 400
+    if len(uploaded_files) > 5:
+        return jsonify({"message": "You can upload up to 5 images"}), 400
+
+    items = []
+    for file in uploaded_files:
+        filename = str(file.filename or "").strip()
+        suffix = Path(filename).suffix.lower()
+        mimetype = str(getattr(file, "mimetype", "") or "").lower()
+        if suffix not in ALLOWED_ORDER_IMAGE_EXTENSIONS or mimetype not in ALLOWED_ORDER_IMAGE_MIMES:
+            return jsonify({"message": "Only JPG, PNG, or WebP images are allowed"}), 400
+        file.stream.seek(0, 2)
+        size = file.stream.tell()
+        file.stream.seek(0)
+        if size > MAX_ORDER_IMAGE_SIZE:
+            return jsonify({"message": "Each image must be 10MB or smaller"}), 400
+        safe_name = f"{secrets.token_hex(8)}_{Path(filename).name}"
+        target = UPLOAD_DIR / safe_name
+        file.save(target)
+        items.append({"url": build_upload_url(safe_name), "filename": filename})
+
+    if len(items) == 1:
+        return jsonify({**items[0], "items": items})
+    return jsonify({"items": items, "urls": [item["url"] for item in items]})
 
 
 @app.post("/api/orders")
@@ -462,6 +479,7 @@ def create_order_route() -> Any:
                 "zip": zip_code,
                 "shippingAddress": ", ".join(part for part in [address, apartment, city, state, zip_code, country] if part),
                 "note": str(payload.get("note", "")).strip(),
+                "labelImageUrls": payload.get("labelImageUrls") or payload.get("labelImageUrl") or [],
                 "labelPdfUrl": str(payload.get("labelPdfUrl", "")).strip(),
             }
         )

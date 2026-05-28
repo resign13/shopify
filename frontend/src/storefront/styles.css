@@ -2256,16 +2256,57 @@ textarea {
 }
 
 
+.checkout-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.checkout-upload-row {
+  display: grid;
+  gap: 14px;
+}
+
+.checkout-upload-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.checkout-upload-trigger {
+  min-width: 168px;
+  flex-shrink: 0;
+}
+
+.checkout-upload-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.checkout-upload-copy strong {
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+
 .checkout-attachment-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 12px;
 }
 
 .checkout-attachment-item {
   display: grid;
-  gap: 6px;
-  padding: 8px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid rgba(61, 43, 31, 0.14);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.72);
@@ -2273,7 +2314,7 @@ textarea {
 
 .checkout-attachment-item img {
   width: 100%;
-  height: 96px;
+  height: 104px;
   object-fit: cover;
   border-radius: 10px;
 }
@@ -2298,7 +2339,7 @@ textarea {
 
 .checkout-attachment-file {
   width: 100%;
-  height: 96px;
+  height: 104px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -2306,4 +2347,15 @@ textarea {
   color: var(--text-color);
   font-weight: 700;
   letter-spacing: 0.08em;
+}
+
+@media (max-width: 760px) {
+  .checkout-upload-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .checkout-upload-trigger {
+    width: 100%;
+  }
 }

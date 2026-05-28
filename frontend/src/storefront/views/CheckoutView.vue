@@ -180,23 +180,40 @@
 
                 <div class="checkout-upload-row">
                   <input
+                    id="checkout-attachment-input"
                     ref="attachmentInput"
-                    class="field"
+                    class="checkout-file-input"
                     type="file"
                     accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp"
                     multiple
                     :disabled="uploadingAttachment || form.labelImages.length >= 5"
                     @change="handleAttachmentChange"
                   />
-                  <span class="helper">
-                    {{
-                      uploadingAttachment
-                        ? checkoutCopy.uploadingAttachment
-                        : form.labelImages.length
-                          ? `${checkoutCopy.uploadedAttachment} ${form.labelImages.length}/5`
-                          : checkoutCopy.attachmentHelp
-                    }}
-                  </span>
+                  <div class="checkout-upload-card">
+                    <button
+                      type="button"
+                      class="secondary-button checkout-upload-trigger"
+                      :disabled="uploadingAttachment || form.labelImages.length >= 5"
+                      @click="openAttachmentPicker"
+                    >
+                      {{
+                        uploadingAttachment
+                          ? checkoutCopy.uploadingAttachmentShort
+                          : checkoutCopy.selectAttachments
+                      }}
+                    </button>
+
+                    <div class="checkout-upload-copy">
+                      <strong>
+                        {{
+                          form.labelImages.length
+                            ? `${checkoutCopy.uploadedAttachment} ${form.labelImages.length}/5`
+                            : checkoutCopy.attachmentTitle
+                        }}
+                      </strong>
+                      <span class="helper">{{ checkoutCopy.attachmentHelp }}</span>
+                    </div>
+                  </div>
                 </div>
                 <div v-if="form.labelImages.length" class="checkout-attachment-list">
                   <article v-for="(image, index) in form.labelImages" :key="image.url" class="checkout-attachment-item">
@@ -309,9 +326,12 @@ const checkoutCopy = computed(() => ({
   zipPlaceholder: 'ZIP / Postal code',
   customizationTitle: 'Order Note & Attachments',
   notePlaceholder: 'Add a note for this order (optional)',
-  attachmentHelp: 'Upload up to 5 attachments (optional, PDF/JPG/PNG/WebP, max 10MB each)',
+  attachmentTitle: 'Upload reference files',
+  attachmentHelp: 'Optional. Upload up to 5 PDF/JPG/PNG/WebP files, max 10MB each.',
+  selectAttachments: 'Choose Files',
   uploadingAttachment: 'Uploading attachments...',
-  uploadedAttachment: 'Uploaded attachments:',
+  uploadingAttachmentShort: 'Uploading...',
+  uploadedAttachment: 'Uploaded files:',
   removeAttachment: 'Remove',
   submit: 'Submit Order',
   success: 'Order submitted successfully. You can review it in your account.',
@@ -604,6 +624,11 @@ async function handleAttachmentChange(event) {
 
 function removeAttachment(index) {
   form.labelImages.splice(index, 1)
+}
+
+function openAttachmentPicker() {
+  if (uploadingAttachment.value || form.labelImages.length >= 5) return
+  attachmentInput.value?.click()
 }
 
 function isImageAttachment(url) {

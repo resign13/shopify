@@ -672,7 +672,7 @@ async function handleSubmit() {
 
     cart.clear()
     successMessage.value = checkoutCopy.value.success
-    router.push('/account/orders')
+    router.push('/shop')
   } finally {
     submitting.value = false
   }

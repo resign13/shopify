@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #ffffff;
   --bg-soft: #f8f8f8;
   --line: #e8e8e8;
@@ -2234,6 +2234,13 @@ textarea {
 
 .detail-quantity-meta span {
   color: var(--muted);
+  font-weight: 600;
+}
+
+.detail-cart-feedback {
+  margin: -4px 0 0;
+  color: #0f7a32;
+  font-size: 0.94rem;
   font-weight: 600;
 }
 

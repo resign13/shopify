@@ -161,6 +161,7 @@
               {{ locale.t('common.buyNow') }}
             </button>
           </div>
+          <p v-if="addToCartSuccess" class="detail-cart-feedback">{{ addToCartSuccess }}</p>
 
           <div class="detail-media-stack">
             <section v-if="catalog.currentProduct.sizeChartImage" class="detail-media-card">
@@ -244,6 +245,8 @@ const locale = useLocaleStore()
 const activeImage = ref('')
 const selectedSize = ref('')
 const selectedQuantity = ref(1)
+const addToCartSuccess = ref('')
+let addToCartSuccessTimer = null
 const sizeChartExpanded = ref(false)
 const descriptionExpanded = ref(false)
 const thumbSkeletons = [1, 2, 3, 4]
@@ -370,6 +373,17 @@ function handleColorChange(option) {
   router.push(`/product/${option.slug}`)
 }
 
+function showAddToCartSuccess() {
+  addToCartSuccess.value = 'Added to cart successfully'
+  if (addToCartSuccessTimer) {
+    window.clearTimeout(addToCartSuccessTimer)
+  }
+  addToCartSuccessTimer = window.setTimeout(() => {
+    addToCartSuccess.value = ''
+    addToCartSuccessTimer = null
+  }, 1000)
+}
+
 function addToCart() {
   if (!catalog.currentProduct || !canPurchase.value) return
   normalizeQuantity()
@@ -382,6 +396,7 @@ function addToCart() {
     selectedQuantity.value,
     selectedSize.value
   )
+  showAddToCartSuccess()
 }
 
 function buyNow() {

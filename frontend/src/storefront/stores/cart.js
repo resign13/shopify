@@ -21,11 +21,14 @@ function resolveUnitPrice(item, quantity = 1) {
     const maxRaw = tier.maxQty ?? tier.max_qty ?? null
     const maxQty = maxRaw == null || maxRaw === '' ? null : Number(maxRaw)
     if (quantity < minQty || (maxQty != null && quantity > maxQty)) continue
-    const discount = tier.discountPercent ?? tier.discount_percent
-    if (discount != null && discount !== '') {
-      resolved = Number((basePrice * (1 - Number(discount) / 100)).toFixed(2))
+    const fixedPrice = Number(tier.price ?? tier.tierPrice ?? tier.tier_price ?? 0)
+    if (fixedPrice > 0) {
+      resolved = fixedPrice
     } else {
-      resolved = Number(tier.price ?? tier.tier_price ?? resolved)
+      const discount = tier.discountPercent ?? tier.discount_percent
+      if (discount != null && discount !== '') {
+        resolved = Number((basePrice * (1 - Number(discount) / 100)).toFixed(2))
+      }
     }
   }
 

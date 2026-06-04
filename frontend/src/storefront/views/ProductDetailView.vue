@@ -58,7 +58,7 @@
             <p class="detail-subprice">{{ selectedSizeLabel }} · {{ detailCopy.basePriceLabel }} {{ formatCurrency(selectedSizePrice) }}</p>
           </div>
 
-          <div class="detail-tier-card premium-tier-card">
+          <div v-if="displayPriceTiers.length" class="detail-tier-card premium-tier-card">
             <div class="detail-tier-title-row">
               <div>
                 <strong>{{ detailCopy.tierTitle }}</strong>
@@ -78,7 +78,6 @@
               >
                 <span class="detail-tier-pill-range">{{ tier.label }}</span>
                 <strong>{{ formatCurrency(tier.price) }}</strong>
-                <small>-{{ tier.discountPercent }}%</small>
               </button>
             </div>
           </div>
@@ -301,32 +300,38 @@ const selectedSizeLabel = computed(() => selectedSize.value || '--')
 const canPurchase = computed(() => selectedSizeStock.value > 0)
 const maxSelectableQuantity = computed(() => Math.max(1, selectedSizeStock.value || 1))
 
+function resolveTierDisplayPrice(tier) {
+  const fixedPrice = Number(tier.price ?? tier.tierPrice ?? tier.tier_price ?? 0)
+  if (fixedPrice > 0) return fixedPrice
+  const discountPercent = Number(tier.discountPercent ?? tier.discount_percent ?? 0)
+  if (discountPercent > 0) {
+    return Number((selectedSizePrice.value * (1 - discountPercent / 100)).toFixed(2))
+  }
+  return 0
+}
+
 const displayPriceTiers = computed(() => {
   const tiers = catalog.currentProduct?.priceTiers || []
-  const normalized = tiers.length
-    ? tiers.map((tier) => ({
+  return tiers
+    .map((tier) => {
+      const minQty = Number(tier.minQty ?? tier.min_qty ?? 0)
+      const maxRaw = tier.maxQty ?? tier.max_qty ?? null
+      const maxQty = maxRaw == null || maxRaw === '' ? null : Number(maxRaw)
+      const price = resolveTierDisplayPrice(tier)
+      return {
         ...tier,
-        discountPercent: Number(tier.discountPercent ?? tier.discount_percent ?? 0),
-        label: tier.maxQty ? `${tier.minQty}-${tier.maxQty}` : `>=${tier.minQty}`,
-      }))
-    : [
-        { minQty: 1, maxQty: 99, discountPercent: 5, label: '1-99' },
-        { minQty: 100, maxQty: 200, discountPercent: 10, label: '100-200' },
-        { minQty: 201, maxQty: 1000, discountPercent: 15, label: '201-1000' },
-      ]
-
-  return normalized.map((tier) => {
-    const price = Number((selectedSizePrice.value * (1 - Number(tier.discountPercent || 0) / 100)).toFixed(2))
-    return {
-      ...tier,
-      price,
-      active: selectedQuantity.value >= tier.minQty && (tier.maxQty == null || selectedQuantity.value <= tier.maxQty),
-    }
-  })
+        minQty,
+        maxQty,
+        label: maxQty ? `${minQty}-${maxQty}` : `>=${minQty}`,
+        price,
+        active: selectedQuantity.value >= minQty && (maxQty == null || selectedQuantity.value <= maxQty),
+      }
+    })
+    .filter((tier) => tier.minQty > 0 && tier.price > 0)
 })
 
 const activeTier = computed(() => displayPriceTiers.value.find((tier) => tier.active) || displayPriceTiers.value[0])
-const activeTierLabel = computed(() => `${detailCopy.quantityLabel}: ${activeTier.value?.label || '1-99'}`)
+const activeTierLabel = computed(() => `${detailCopy.quantityLabel}: ${activeTier.value?.label || '1+'}`)
 const activeTierPrice = computed(() => activeTier.value?.price || selectedSizePrice.value)
 
 

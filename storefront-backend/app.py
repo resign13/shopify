@@ -162,7 +162,9 @@ def build_homepage_payload(lang: str) -> dict[str, Any]:
     config = get_homepage_config()
     products = list_products()
     product_map = {int(item["id"]): item for item in products}
-    category_map = {item["key"]: item["label"] for item in list_category_labels(lang)}
+    category_items = list_category_labels(lang)
+    category_map = {item["key"]: item["label"] for item in category_items}
+    all_categories = [{"key": item["key"], "label": item["label"]} for item in category_items]
 
     selected_banners = []
     for key in HOME_SECTION_KEYS:
@@ -207,7 +209,10 @@ def build_homepage_payload(lang: str) -> dict[str, Any]:
     return {
         "banners": selected_banners,
         "sections": sections,
+        # categories: homepage category strip, controlled by Home Config displayCategoryKeys.
+        # allCategories: full active admin category list, used by the SHOP dropdown menu.
         "categories": categories,
+        "allCategories": all_categories,
         "stats": stats,
         "featured": sections.get("bestSeller", []),
     }

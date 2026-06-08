@@ -320,7 +320,7 @@ const heroSlides = computed(() =>
 )
 
 const categoryCards = computed(() =>
-  (catalog.categories || []).map((card) => ({
+  (catalog.homeCategories || []).map((card) => ({
     ...card,
     image: categoryMedia[card.key] || categoryMedia.womenswear,
     caption: homeCopy.value.categoryCaptions[card.key] || card.label,

@@ -60,6 +60,7 @@ export const useCatalogStore = defineStore('catalog', {
       specialPrice: [],
     },
     categories: [],
+    homeCategories: [],
     stats: [],
     products: [],
     currentProduct: null,
@@ -102,7 +103,8 @@ export const useCatalogStore = defineStore('catalog', {
           newArrival: (data.collectionSections?.newArrival || []).map((item) => normalizeProductCategory(item)),
           specialPrice: (data.collectionSections?.specialPrice || []).map((item) => normalizeProductCategory(item)),
         }
-        this.categories = (data.categories || []).map((item) => normalizeCategoryLabel(item))
+        this.homeCategories = (data.categories || []).map((item) => normalizeCategoryLabel(item))
+        this.categories = (data.allCategories || data.categories || []).map((item) => normalizeCategoryLabel(item))
         this.stats = data.stats
       } catch (error) {
         this.error = error.message || 'Home load failed'

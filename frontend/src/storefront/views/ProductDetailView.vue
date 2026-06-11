@@ -369,7 +369,7 @@ watch(
     selectedSize.value = product.sizes?.[0] || ''
     selectedQuantity.value = 1
     sizeChartExpanded.value = false
-    descriptionExpanded.value = true
+    descriptionExpanded.value = false
   },
   { immediate: true }
 )

@@ -91,10 +91,6 @@
 - `items[].categoryLabel`
 - `items[].price`
 - `items[].formattedPrice`
-- `items[].priceTiers[]`
-- `items[].priceTiers[].minQty`
-- `items[].priceTiers[].maxQty`
-- `items[].priceTiers[].price`
 - `items[].stock`
 - `items[].featured`
 - `items[].origin`
@@ -130,10 +126,6 @@
     "colorName": "White",
     "colorHex": "#F5F1E8",
     "price": 36.99,
-    "priceTiers": [
-      { "minQty": 1, "maxQty": 99, "discountPercent": 5, "price": 0 },
-      { "minQty": 100, "maxQty": 200, "discountPercent": 10, "price": 0 },
-      { "minQty": 201, "maxQty": 1000, "discountPercent": 15, "price": 0 }
     ],
     "sizes": ["S", "M"],
     "sizePrices": [
@@ -158,7 +150,6 @@
 ```
 
 说明:
-- `priceTiers` 用于前台详情页展示阶梯式价格
 - `colorOptions` 用于同款不同颜色切换，前端应跳转到对应 `slug`
 - 每个颜色款式是独立商品，`stock` 是该颜色所有尺码库存总和
 - `sizePrices[].stock` 是该颜色下具体尺码的库存，下单传 `sizeCode` 时会优先扣减对应尺码库存

@@ -232,32 +232,6 @@ def _apply_schema_migrations(cur: Any) -> None:
         )
         """
     )
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS product_price_tiers (
-          id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-          product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-          min_qty INTEGER NOT NULL CHECK (min_qty > 0),
-          max_qty INTEGER,
-          discount_percent NUMERIC(5, 2) NOT NULL DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100),
-          tier_price NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (tier_price >= 0),
-          sort_order INTEGER NOT NULL DEFAULT 0
-        )
-        """
-    )
-    cur.execute("ALTER TABLE product_price_tiers ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5, 2) NOT NULL DEFAULT 0")
-    cur.execute("ALTER TABLE product_price_tiers ADD COLUMN IF NOT EXISTS tier_price NUMERIC(12, 2) NOT NULL DEFAULT 0")
-    cur.execute(
-        """
-        UPDATE product_price_tiers ppt
-        SET tier_price = ROUND((p.price * (1 - ppt.discount_percent / 100))::numeric, 2),
-            discount_percent = 0
-        FROM products p
-        WHERE p.id = ppt.product_id
-          AND COALESCE(ppt.discount_percent, 0) > 0
-          AND COALESCE(ppt.tier_price, 0) = 0
-        """
-    )
     cur.execute("ALTER TABLE product_size_prices ADD COLUMN IF NOT EXISTS stock INTEGER NOT NULL DEFAULT 0")
     cur.execute(
         """
@@ -328,7 +302,6 @@ def _build_product_bundles(product_ids: list[int]) -> tuple[
     dict[int, list[str]],
     dict[int, list[dict[str, Any]]],
     dict[int, list[dict[str, Any]]],
-    dict[int, list[dict[str, Any]]],
 ]:
     translation_rows = _fetch_all(
         """
@@ -366,15 +339,6 @@ def _build_product_bundles(product_ids: list[int]) -> tuple[
         """,
         (product_ids,),
     )
-    tier_rows = _fetch_all(
-        """
-        SELECT product_id, min_qty, max_qty, discount_percent, tier_price, sort_order
-        FROM product_price_tiers
-        WHERE product_id = ANY(%s)
-        ORDER BY product_id, sort_order, id
-        """,
-        (product_ids,),
-    )
 
     names = {product_id: _empty_bundle() for product_id in product_ids}
     summaries = {product_id: _empty_bundle() for product_id in product_ids}
@@ -382,7 +346,6 @@ def _build_product_bundles(product_ids: list[int]) -> tuple[
     galleries = {product_id: [] for product_id in product_ids}
     sizes = {product_id: [] for product_id in product_ids}
     size_prices = {product_id: [] for product_id in product_ids}
-    price_tiers = {product_id: [] for product_id in product_ids}
 
     for row in translation_rows:
         product_id = int(row["product_id"])
@@ -403,30 +366,19 @@ def _build_product_bundles(product_ids: list[int]) -> tuple[
                 "sortOrder": int(row["sort_order"]),
             }
         )
-    for row in tier_rows:
-        price_tiers[int(row["product_id"])].append(
-            {
-                "minQty": int(row["min_qty"]),
-                "maxQty": int(row["max_qty"]) if row["max_qty"] is not None else None,
-                "discountPercent": _num(row["discount_percent"] or 0),
-                "discount_percent": _num(row["discount_percent"] or 0),
-                "price": _num(row["tier_price"]),
-            }
-        )
-    return names, summaries, descriptions, galleries, sizes, size_prices, price_tiers
+    return names, summaries, descriptions, galleries, sizes, size_prices
 
 
 def _build_product_result(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not rows:
         return []
     product_ids = [int(row["id"]) for row in rows]
-    names, summaries, descriptions, galleries, sizes, size_prices, price_tiers = _build_product_bundles(product_ids)
+    names, summaries, descriptions, galleries, sizes, size_prices = _build_product_bundles(product_ids)
     items: list[dict[str, Any]] = []
     for row in rows:
         product_id = int(row["id"])
         size_price_list = size_prices[product_id]
         default_price = size_price_list[0]["price"] if size_price_list else _num(row["price"])
-        product_price_tiers = normalize_tier_prices_for_output(price_tiers[product_id], default_price)
         items.append(
             {
                 "id": product_id,
@@ -447,7 +399,6 @@ def _build_product_result(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "sizePrices": size_price_list,
                 "image": row["main_image_url"],
                 "gallery": galleries[product_id],
-                "priceTiers": product_price_tiers,
                 "sizeChartImage": row.get("size_chart_image_url") or "",
                 "descriptionImage": row.get("description_image_url") or "",
                 "name": names[product_id],
@@ -516,54 +467,6 @@ def _attach_color_options(product: dict[str, Any] | None) -> dict[str, Any] | No
     product["colorOptions"] = _list_color_options(product.get("colorGroup", ""))
     return product
 
-
-def _decimal_or_none(value: Any) -> Decimal | None:
-    if value in (None, "", "null"):
-        return None
-    try:
-        return Decimal(str(value))
-    except Exception:
-        return None
-
-
-def _fixed_tier_price(base_price: Any, tier_price: Any, discount_percent: Any) -> Decimal | None:
-    fixed_price = _decimal_or_none(tier_price)
-    if fixed_price is not None and fixed_price > 0:
-        return fixed_price
-    discount = _decimal_or_none(discount_percent)
-    if discount is not None and discount > 0:
-        return Decimal(str(base_price or 0)) * (Decimal("1") - discount / Decimal("100"))
-    return None
-
-
-def normalize_tier_prices_for_output(tiers: list[dict[str, Any]], base_price: Any) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for tier in tiers:
-        fixed_price = _fixed_tier_price(base_price, tier.get("price"), tier.get("discountPercent") or tier.get("discount_percent"))
-        if fixed_price is None:
-            continue
-        rows.append(
-            {
-                **tier,
-                "discountPercent": 0,
-                "discount_percent": 0,
-                "price": _num(fixed_price.quantize(Decimal("0.01"))),
-            }
-        )
-    return rows
-
-
-def _resolve_tier_price(base_price: Any, tiers: list[dict[str, Any]], quantity: int) -> int | float:
-    resolved = _num(base_price)
-    for tier in tiers:
-        min_qty = int(tier["min_qty"])
-        max_raw = tier["max_qty"]
-        max_qty = int(max_raw) if max_raw is not None else None
-        if quantity >= min_qty and (max_qty is None or quantity <= max_qty):
-            fixed_price = _fixed_tier_price(base_price, tier.get("tier_price"), tier.get("discount_percent"))
-            if fixed_price is not None:
-                resolved = _num(fixed_price.quantize(Decimal("0.01")))
-    return resolved
 
 
 def list_products() -> list[dict[str, Any]]:
@@ -1063,17 +966,7 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                 else:
                     base_price = product["price"]
 
-                cur.execute(
-                    """
-                    SELECT min_qty, max_qty, discount_percent, tier_price
-                    FROM product_price_tiers
-                    WHERE product_id = %s
-                    ORDER BY sort_order, id
-                    """,
-                    (product_id,),
-                )
-                tiers = cur.fetchall()
-                unit_price = Decimal(str(_resolve_tier_price(base_price, list(tiers), quantity)))
+                unit_price = Decimal(str(base_price))
                 line_total = unit_price * quantity
                 total_amount += line_total
 

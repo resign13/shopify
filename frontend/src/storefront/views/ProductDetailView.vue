@@ -58,30 +58,6 @@
             <p class="detail-subprice">{{ selectedSizeLabel }} · {{ detailCopy.basePriceLabel }} {{ formatCurrency(selectedSizePrice) }}</p>
           </div>
 
-          <div v-if="displayPriceTiers.length" class="detail-tier-card premium-tier-card">
-            <div class="detail-tier-title-row">
-              <div>
-                <strong>{{ detailCopy.tierTitle }}</strong>
-                <span>{{ detailCopy.tierHint }}</span>
-              </div>
-              <span class="detail-tier-badge">{{ activeTierLabel }}</span>
-            </div>
-
-            <div class="detail-tier-list">
-              <button
-                v-for="tier in displayPriceTiers"
-                :key="tier.label"
-                :class="['detail-tier-pill', { active: tier.active }]"
-                type="button"
-                :disabled="!canPurchase"
-                @click="selectedQuantity = Math.min(tier.minQty, maxSelectableQuantity)"
-              >
-                <span class="detail-tier-pill-range">{{ tier.label }}</span>
-                <strong>{{ formatCurrency(tier.price) }}</strong>
-              </button>
-            </div>
-          </div>
-
           <div v-if="colorOptions.length" class="detail-option-group detail-color-section">
             <p class="detail-color-title">
               {{ detailCopy.colorLabel }}: <strong>{{ selectedColorLabel }}</strong>
@@ -146,7 +122,7 @@
                 <button type="button" class="detail-qty-button" :disabled="!canPurchase" @click="increaseQuantity">+</button>
               </div>
               <div class="detail-quantity-meta">
-                <strong>{{ formatCurrency(activeTierPrice) }}</strong>
+                <strong>{{ formatCurrency(activeUnitPrice) }}</strong>
                 <span>{{ detailCopy.selectedSizeLabel }} {{ selectedSizeLabel }}</span>
               </div>
             </div>
@@ -256,8 +232,6 @@ const detailCopy = {
   colorLabel: 'Color',
   codeLabel: 'Code',
   basePriceLabel: 'Base price',
-  tierTitle: 'Tier Pricing',
-  tierHint: 'Higher quantity, better unit price',
   stockLabel: 'Available Stock',
   selectedSizeLabel: 'Selected size:',
   quantityLabel: 'Quantity',
@@ -300,39 +274,7 @@ const selectedSizeLabel = computed(() => selectedSize.value || '--')
 const canPurchase = computed(() => selectedSizeStock.value > 0)
 const maxSelectableQuantity = computed(() => Math.max(1, selectedSizeStock.value || 1))
 
-function resolveTierDisplayPrice(tier) {
-  const fixedPrice = Number(tier.price ?? tier.tierPrice ?? tier.tier_price ?? 0)
-  if (fixedPrice > 0) return fixedPrice
-  const discountPercent = Number(tier.discountPercent ?? tier.discount_percent ?? 0)
-  if (discountPercent > 0) {
-    return Number((selectedSizePrice.value * (1 - discountPercent / 100)).toFixed(2))
-  }
-  return 0
-}
-
-const displayPriceTiers = computed(() => {
-  const tiers = catalog.currentProduct?.priceTiers || []
-  return tiers
-    .map((tier) => {
-      const minQty = Number(tier.minQty ?? tier.min_qty ?? 0)
-      const maxRaw = tier.maxQty ?? tier.max_qty ?? null
-      const maxQty = maxRaw == null || maxRaw === '' ? null : Number(maxRaw)
-      const price = resolveTierDisplayPrice(tier)
-      return {
-        ...tier,
-        minQty,
-        maxQty,
-        label: maxQty ? `${minQty}-${maxQty}` : `>=${minQty}`,
-        price,
-        active: selectedQuantity.value >= minQty && (maxQty == null || selectedQuantity.value <= maxQty),
-      }
-    })
-    .filter((tier) => tier.minQty > 0 && tier.price > 0)
-})
-
-const activeTier = computed(() => displayPriceTiers.value.find((tier) => tier.active) || displayPriceTiers.value[0])
-const activeTierLabel = computed(() => `${detailCopy.quantityLabel}: ${activeTier.value?.label || '1+'}`)
-const activeTierPrice = computed(() => activeTier.value?.price || selectedSizePrice.value)
+const activeUnitPrice = computed(() => selectedSizePrice.value)
 
 
 function formatCurrency(value) {

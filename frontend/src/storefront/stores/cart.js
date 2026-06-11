@@ -11,30 +11,6 @@ function formatCurrency(value) {
   }).format(Number(value || 0))
 }
 
-function resolveUnitPrice(item, quantity = 1) {
-  const basePrice = Number(item.basePrice ?? item.price ?? 0)
-  const tiers = Array.isArray(item.priceTiers) ? item.priceTiers : []
-  let resolved = basePrice
-
-  for (const tier of tiers) {
-    const minQty = Number(tier.minQty ?? tier.min_qty ?? 0)
-    const maxRaw = tier.maxQty ?? tier.max_qty ?? null
-    const maxQty = maxRaw == null || maxRaw === '' ? null : Number(maxRaw)
-    if (quantity < minQty || (maxQty != null && quantity > maxQty)) continue
-    const fixedPrice = Number(tier.price ?? tier.tierPrice ?? tier.tier_price ?? 0)
-    if (fixedPrice > 0) {
-      resolved = fixedPrice
-    } else {
-      const discount = tier.discountPercent ?? tier.discount_percent
-      if (discount != null && discount !== '') {
-        resolved = Number((basePrice * (1 - Number(discount) / 100)).toFixed(2))
-      }
-    }
-  }
-
-  return resolved
-}
-
 function makeLineKey(item) {
   return `${item.id}:${item.sizeCode || ''}`
 }
@@ -42,15 +18,13 @@ function makeLineKey(item) {
 function hydrateItem(item) {
   const quantity = Math.max(1, Number(item.quantity || 1))
   const basePrice = Number(item.basePrice ?? item.price ?? 0)
-  const priceTiers = Array.isArray(item.priceTiers) ? item.priceTiers : []
-  const unitPrice = resolveUnitPrice({ basePrice, priceTiers }, quantity)
+  const unitPrice = basePrice
   const lineTotal = Number((unitPrice * quantity).toFixed(2))
 
   return {
     ...item,
     quantity,
     basePrice,
-    priceTiers,
     price: unitPrice,
     formattedPrice: formatCurrency(unitPrice),
     unitPrice,
@@ -103,7 +77,6 @@ export const useCartStore = defineStore('cart', {
         sizeLabel: sizeCode,
         quantity: Math.min(quantity, availableStock),
         basePrice: product.basePrice ?? product.price,
-        priceTiers: product.priceTiers || [],
         colorName: product.colorName || '',
         colorHex: product.colorHex || '',
       }

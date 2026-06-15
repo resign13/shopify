@@ -7,6 +7,7 @@ import OrdersCenterView from './views/OrdersCenterView.vue'
 import CheckoutView from './views/CheckoutView.vue'
 import ProductDetailView from './views/ProductDetailView.vue'
 import ShopView from './views/ShopView.vue'
+import InventoryView from './views/InventoryView.vue'
 import { pinia } from './stores'
 import { useAuthStore } from './stores/auth'
 
@@ -32,6 +33,7 @@ const router = createRouter({
     { path: '/login', component: LoginView, meta: { guestOnly: true } },
     { path: '/home', component: HomeView, meta: { requiresAuth: true } },
     { path: '/shop', component: ShopView, meta: { requiresAuth: true } },
+    { path: '/inventory', component: InventoryView, meta: { requiresAuth: true } },
     { path: '/collections/:sectionSlug', component: ShopView, meta: { requiresAuth: true } },
     { path: '/product/:slug', component: ProductDetailView, meta: { requiresAuth: true } },
     { path: '/checkout', component: CheckoutView, meta: { requiresAuth: true } },

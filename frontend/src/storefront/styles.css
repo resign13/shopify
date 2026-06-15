@@ -98,7 +98,7 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 34px;
+  gap: clamp(18px, 2vw, 30px);
 }
 
 .nav-dropdown {
@@ -117,7 +117,7 @@ textarea {
 .nav-link-button,
 .text-action {
   padding: 8px 0;
-  font-size: 0.98rem;
+  font-size: clamp(0.88rem, 0.92vw, 0.98rem);
   font-weight: 600;
   letter-spacing: 0.02em;
 }

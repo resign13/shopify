@@ -44,6 +44,9 @@
         <RouterLink class="nav-link-button" to="/collections/special-price">
           {{ navCopy.preOrder }}
         </RouterLink>
+        <RouterLink class="nav-link-button" to="/inventory">
+          {{ navCopy.inventory }}
+        </RouterLink>
         <RouterLink class="nav-link-button" :to="{ path: '/home', hash: '#about' }">
           {{ navCopy.about }}
         </RouterLink>
@@ -110,6 +113,7 @@ const navCopy = {
   bestSeller: 'BEST SELLER',
   newArrival: 'NEW ARRIVAL',
   preOrder: 'PRE-ORDER',
+  inventory: 'INVENTORY',
   about: 'ABOUT',
   contact: 'CONTACT',
   viewAll: 'VIEW ALL PRODUCTS',

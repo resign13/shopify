@@ -1,17 +1,6 @@
 <template>
   <section class="inventory-page">
     <div class="container">
-      <section class="inventory-hero">
-        <p class="eyebrow">STOCK OVERVIEW</p>
-        <div>
-          <h1>Inventory</h1>
-          <p>
-            View available stock by product color SKU and size. This page is read-only and always
-            follows the same inventory data used by the storefront.
-          </p>
-        </div>
-      </section>
-
       <section class="inventory-toolbar">
         <label class="inventory-field">
           <span>Category</span>
@@ -278,27 +267,6 @@ onMounted(loadInventory)
 <style scoped>
 .inventory-page {
   padding: 36px 0 72px;
-}
-
-.inventory-hero {
-  display: grid;
-  gap: 12px;
-  max-width: 860px;
-  margin-bottom: 28px;
-}
-
-.inventory-hero h1 {
-  margin: 0;
-  font-size: clamp(2.4rem, 5vw, 5rem);
-  line-height: 0.92;
-  letter-spacing: -0.055em;
-}
-
-.inventory-hero p {
-  max-width: 720px;
-  margin: 12px 0 0;
-  color: var(--muted);
-  line-height: 1.75;
 }
 
 .inventory-toolbar {

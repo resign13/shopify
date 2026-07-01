@@ -58,7 +58,7 @@ const pages = {
   contact: {
     eyebrow: 'CUSTOMER SUPPORT',
     title: 'Contact Us',
-    intro: 'If you have questions about products, orders, shipping, or returns, please contact us. We usually reply within 1?2 business days.',
+    intro: 'If you have questions about products, orders, shipping, or returns, please contact us. We usually reply within 1-2 business days.',
     sections: [
       {
         heading: 'Contact Information',
@@ -133,11 +133,11 @@ const pages = {
     sections: [
       {
         heading: 'Processing Time',
-        paragraphs: ['Orders are usually processed within 1?3 business days after confirmation. Processing time may vary during holidays or peak seasons.'],
+        paragraphs: ['Orders are usually processed within 1-3 business days after confirmation. Processing time may vary during holidays or peak seasons.'],
       },
       {
         heading: 'Estimated Shipping Time',
-        items: ['Standard Shipping: 7?15 business days', 'Express Shipping: 3?7 business days'],
+        items: ['Standard Shipping: 7-15 business days', 'Express Shipping: 3-7 business days'],
       },
       {
         heading: 'Shipping Cost',
@@ -182,7 +182,7 @@ const pages = {
     title: 'FAQ',
     intro: 'Find quick answers to common questions about Swawell products, orders, and shipping.',
     sections: [
-      { heading: 'How long does shipping take?', paragraphs: ['Standard shipping usually takes 7?15 business days, while express shipping usually takes 3?7 business days.'] },
+      { heading: 'How long does shipping take?', paragraphs: ['Standard shipping usually takes 7-15 business days, while express shipping usually takes 3-7 business days.'] },
       { heading: 'How can I track my order?', paragraphs: ['When tracking information is available, we will provide it with your order update.'] },
       { heading: 'Can I change my shipping address?', paragraphs: ['Please contact us as soon as possible. If the order has not been shipped, we may be able to update the address.'] },
       { heading: 'How do I contact customer support?', paragraphs: [`You can contact us at ${contactEmail}.`] },

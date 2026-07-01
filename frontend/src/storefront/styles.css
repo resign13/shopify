@@ -2370,7 +2370,7 @@ textarea {
 
 .policy-page {
   padding: 72px 0 96px;
-  background: linear-gradient(180deg, #fffaf6 0%, #f4eee8 100%);
+  background: #fff;
 }
 
 .policy-container {
@@ -2378,7 +2378,7 @@ textarea {
 }
 
 .policy-container > .eyebrow {
-  color: #b36e48;
+  color: #111;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -2401,10 +2401,10 @@ textarea {
 .policy-card {
   margin-top: 28px;
   padding: clamp(24px, 4vw, 42px);
-  border: 1px solid rgba(111, 81, 62, 0.12);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 20px 54px rgba(80, 56, 41, 0.10);
+  border: 1px solid #eeeeee;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: none;
 }
 
 .policy-section + .policy-section {

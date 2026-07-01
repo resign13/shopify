@@ -1,7 +1,7 @@
 export const translations = {
   en: {
     brand: {
-      name: 'Swawell',
+      name: 'GINGTTO',
       subline: 'Apparel Supply Chain',
     },
     nav: {

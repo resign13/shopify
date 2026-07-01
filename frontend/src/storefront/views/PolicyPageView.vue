@@ -22,16 +22,16 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-const brandName = 'Swawell'
+const brandName = 'GINGTTO'
 const contactEmail = 'business@smawell.shop'
 const contactPhone = '+86 20 8888 6688'
 const contactAddress = 'Guangzhou, China'
 
 const pages = {
   'about-us': {
-    eyebrow: 'ABOUT SWAWELL',
+    eyebrow: 'ABOUT GINGTTO',
     title: 'About Us',
-    intro: 'Swawell is an online fashion store focused on reliable apparel products, clear product presentation, and a smooth buying experience.',
+    intro: 'GINGTTO is an online fashion store focused on reliable apparel products, clear product presentation, and a smooth buying experience.',
     sections: [
       {
         heading: 'Who We Are',
@@ -74,7 +74,7 @@ const pages = {
   'privacy-policy': {
     eyebrow: 'LEGAL',
     title: 'Privacy Policy',
-    intro: 'Swawell respects your privacy and is committed to protecting your personal information.',
+    intro: 'GINGTTO respects your privacy and is committed to protecting your personal information.',
     sections: [
       {
         heading: 'Information We Collect',
@@ -102,7 +102,7 @@ const pages = {
   'terms-of-service': {
     eyebrow: 'LEGAL',
     title: 'Terms of Service',
-    intro: 'By using Swawell, you agree to the following terms and conditions.',
+    intro: 'By using GINGTTO, you agree to the following terms and conditions.',
     sections: [
       {
         heading: 'General Terms',
@@ -118,7 +118,7 @@ const pages = {
       },
       {
         heading: 'Intellectual Property',
-        paragraphs: ['Website content, including images, text, logos, and product descriptions, belongs to Swawell or its partners and may not be used without permission.'],
+        paragraphs: ['Website content, including images, text, logos, and product descriptions, belongs to GINGTTO or its partners and may not be used without permission.'],
       },
       {
         heading: 'Contact',
@@ -180,7 +180,7 @@ const pages = {
   faq: {
     eyebrow: 'HELP CENTER',
     title: 'FAQ',
-    intro: 'Find quick answers to common questions about Swawell products, orders, and shipping.',
+    intro: 'Find quick answers to common questions about GINGTTO products, orders, and shipping.',
     sections: [
       { heading: 'How long does shipping take?', paragraphs: ['Standard shipping usually takes 7-15 business days, while express shipping usually takes 3-7 business days.'] },
       { heading: 'How can I track my order?', paragraphs: ['When tracking information is available, we will provide it with your order update.'] },

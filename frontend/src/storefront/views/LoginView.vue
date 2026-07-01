@@ -46,14 +46,14 @@ const router = useRouter()
 
 const loginCopy = computed(() => ({
   overline: 'BUYER ACCESS',
-  title: 'Swawell Buyer Login',
+  title: 'GINGTTO Buyer Login',
   text: 'Sign in to view the homepage, category browsing, product detail, cart and checkout.',
   protectedNotice: 'This page is available after login.',
   email: 'Email',
   password: 'Password',
   submit: 'Login to Continue',
   brandTitle: 'A premium apparel storefront for womenswear and menswear',
-  brandText: 'Swawell now presents womenswear, menswear, pants, denim and outerwear with a cleaner homepage, richer media and a cart-based checkout flow.',
+  brandText: 'GINGTTO now presents womenswear, menswear, pants, denim and outerwear with a cleaner homepage, richer media and a cart-based checkout flow.',
   brandPills: ['Womenswear', 'Menswear', 'Cart checkout'],
 }))
 

@@ -65,7 +65,7 @@ const locale = useLocaleStore()
 
 const footerCopy = computed(() => ({
   aboutLabel: 'ABOUT US',
-  aboutText: 'Swawell focuses on womenswear, menswear and fashion essentials with stable stock, clear product details and a smooth storefront-to-checkout flow.',
+  aboutText: 'GINGTTO focuses on womenswear, menswear and fashion essentials with stable stock, clear product details and a smooth storefront-to-checkout flow.',
   infoLabel: 'INFORMATION',
   infoLinks: [
     { label: 'Privacy Policy', to: '/pages/privacy-policy' },
@@ -75,7 +75,7 @@ const footerCopy = computed(() => ({
   ],
   serviceLabel: 'CUSTOMER SERVICES',
   serviceLinks: [
-    { label: 'About Swawell', to: '/pages/about-us' },
+    { label: 'About GINGTTO', to: '/pages/about-us' },
     { label: 'Contact Us', to: '/pages/contact' },
     { label: 'Return & Refund Policy', to: '/pages/return-refund-policy' },
   ],
@@ -85,6 +85,6 @@ const footerCopy = computed(() => ({
   address: 'Guangzhou, China',
   login: 'Sign In',
   enter: 'Enter Store',
-  copyright: '© 2026 Swawell',
+  copyright: '© 2026 GINGTTO',
 }))
 </script>

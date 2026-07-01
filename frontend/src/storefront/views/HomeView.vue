@@ -220,16 +220,16 @@ const sectionSlugByKey = {
 
 const brandStoryCopy = computed(() => ({
   paragraphs: [
-    'Swawell was built from a long-term view of modern apparel. We believe strong products should do more than follow short-lived trends. They should balance silhouette, fabric, color, comfort and supply stability in a way that makes them commercially meaningful over time. That is why the brand was never limited to a single narrow category, and why the storefront now brings together both menswear and womenswear in one more complete merchandise structure.',
-    'From a product perspective, Swawell focuses on building a repeatable core assortment. Whether it is pants for everyday business-casual use, tops with cleaner silhouettes, denim with dependable turnover, or outerwear suited to seasonal transitions, the goal is not only to create pieces that look good, but pieces that can support real sell-through and ongoing replenishment. For buyers, this means a clearer category system, a steadier launch rhythm, and a more usable product matrix for assortment planning.',
-    'At the same time, Swawell treats presentation as part of the product itself. We want buyers to understand the brand quickly the moment they enter the site, not just scroll through disconnected item cards. That is why the homepage is organized around hero imagery, category navigation, best-seller and new-arrival modules, visible inventory and a smoother order flow. The storefront is meant to function not only as a sales page, but as the first layer of trust between the brand and its customers.',
+    'GINGTTO was built from a long-term view of modern apparel. We believe strong products should do more than follow short-lived trends. They should balance silhouette, fabric, color, comfort and supply stability in a way that makes them commercially meaningful over time. That is why the brand was never limited to a single narrow category, and why the storefront now brings together both menswear and womenswear in one more complete merchandise structure.',
+    'From a product perspective, GINGTTO focuses on building a repeatable core assortment. Whether it is pants for everyday business-casual use, tops with cleaner silhouettes, denim with dependable turnover, or outerwear suited to seasonal transitions, the goal is not only to create pieces that look good, but pieces that can support real sell-through and ongoing replenishment. For buyers, this means a clearer category system, a steadier launch rhythm, and a more usable product matrix for assortment planning.',
+    'At the same time, GINGTTO treats presentation as part of the product itself. We want buyers to understand the brand quickly the moment they enter the site, not just scroll through disconnected item cards. That is why the homepage is organized around hero imagery, category navigation, best-seller and new-arrival modules, visible inventory and a smoother order flow. The storefront is meant to function not only as a sales page, but as the first layer of trust between the brand and its customers.',
   ],
   quote: 'Designed for modern wardrobes, built for lasting business.',
 }))
 
 const conciseBrandStoryCopy = computed(() => ({
   paragraphs: [
-    'Swawell focuses on modern apparel with cleaner silhouettes, steadier supply and a more unified presentation across menswear and womenswear.',
+    'GINGTTO focuses on modern apparel with cleaner silhouettes, steadier supply and a more unified presentation across menswear and womenswear.',
     'The storefront is designed to help buyers understand the brand quickly, browse key categories with clarity, and move through inventory and ordering with less friction.',
   ],
   quote: 'Modern apparel, steady supply.',
@@ -238,7 +238,7 @@ const conciseBrandStoryCopy = computed(() => ({
 const homeCopy = computed(() => ({
   title: 'A modern apparel storefront for womenswear and menswear',
   storyTitle: 'Brand Story',
-  storyText: 'Swawell uses a more premium homepage structure to present banners, category navigation, best sellers and special-price products in one clean storefront flow.',
+  storyText: 'GINGTTO uses a more premium homepage structure to present banners, category navigation, best sellers and special-price products in one clean storefront flow.',
   storyQuote: 'Modern apparel, stable supply, stronger presentation.',
   strengthCards: [
     { title: 'Admin-Controlled Homepage', text: 'Hero banners, category strip and all 3 product modules can be managed from the admin system.' },

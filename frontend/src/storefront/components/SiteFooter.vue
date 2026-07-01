@@ -80,7 +80,7 @@ const footerCopy = computed(() => ({
     { label: 'Return & Refund Policy', to: '/pages/return-refund-policy' },
   ],
   contactLabel: 'CONTACT',
-  email: 'business@smawell.shop',
+  email: 'business@gingtto.com',
   phone: '+86 20 8888 6688',
   address: 'Guangzhou, China',
   login: 'Sign In',

@@ -23,7 +23,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const brandName = 'GINGTTO'
-const contactEmail = 'business@smawell.shop'
+const contactEmail = 'business@gingtto.com'
 const contactPhone = '+86 20 8888 6688'
 const contactAddress = 'Guangzhou, China'
 

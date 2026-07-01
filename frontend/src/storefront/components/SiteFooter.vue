@@ -11,14 +11,18 @@
         <section class="footer-column">
           <p class="footer-column-label">{{ footerCopy.infoLabel }}</p>
           <ul class="footer-link-list">
-            <li v-for="item in footerCopy.infoLinks" :key="item">{{ item }}</li>
+            <li v-for="item in footerCopy.infoLinks" :key="item.label">
+              <RouterLink :to="item.to">{{ item.label }}</RouterLink>
+            </li>
           </ul>
         </section>
 
         <section class="footer-column">
           <p class="footer-column-label">{{ footerCopy.serviceLabel }}</p>
           <ul class="footer-link-list">
-            <li v-for="item in footerCopy.serviceLinks" :key="item">{{ item }}</li>
+            <li v-for="item in footerCopy.serviceLinks" :key="item.label">
+              <RouterLink :to="item.to">{{ item.label }}</RouterLink>
+            </li>
           </ul>
         </section>
 
@@ -61,17 +65,26 @@ const locale = useLocaleStore()
 
 const footerCopy = computed(() => ({
   aboutLabel: 'ABOUT US',
-  aboutText: 'GINGTTO focuses on womenswear, menswear and fashion essentials with stable stock, premium visuals and a cleaner storefront-to-checkout flow.',
+  aboutText: 'Swawell focuses on womenswear, menswear and fashion essentials with stable stock, clear product details and a smooth storefront-to-checkout flow.',
   infoLabel: 'INFORMATION',
-  infoLinks: ['Payment Policy', 'Privacy Policy', 'Shipping Policy', 'Terms & Conditions'],
+  infoLinks: [
+    { label: 'Privacy Policy', to: '/pages/privacy-policy' },
+    { label: 'Terms of Service', to: '/pages/terms-of-service' },
+    { label: 'Shipping Policy', to: '/pages/shipping-policy' },
+    { label: 'FAQ', to: '/pages/faq' },
+  ],
   serviceLabel: 'CUSTOMER SERVICES',
-  serviceLinks: ['About GINGTTO', 'Contact Us', 'Why Choose Us?', 'Return & Refund Policy'],
+  serviceLinks: [
+    { label: 'About Swawell', to: '/pages/about-us' },
+    { label: 'Contact Us', to: '/pages/contact' },
+    { label: 'Return & Refund Policy', to: '/pages/return-refund-policy' },
+  ],
   contactLabel: 'CONTACT',
-  email: 'business@gingtto.com',
+  email: 'business@smawell.shop',
   phone: '+86 20 8888 6688',
   address: 'Guangzhou, China',
   login: 'Sign In',
   enter: 'Enter Store',
-  copyright: '© 2026 GINGTTO',
+  copyright: '© 2026 Swawell',
 }))
 </script>

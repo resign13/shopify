@@ -108,7 +108,7 @@ const locale = useLocaleStore()
 const catalog = useCatalogStore()
 
 const navCopy = {
-  dropdownText: 'Explore the full GINGTTO catalog by category.',
+  dropdownText: 'Explore the full Swawell catalog by category.',
   shop: 'SHOP',
   bestSeller: 'BEST SELLER',
   newArrival: 'NEW ARRIVAL',

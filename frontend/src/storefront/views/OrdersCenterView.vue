@@ -56,7 +56,7 @@
                 {{ expandedOrderIds.has(order.id) ? copy.hideDetails : copy.viewDetails }}
               </button>
               <a
-                v-if="order.paymentLink && order.status === 'pending_payment'"
+                v-if="order.paymentLink && ['pending_payment', 'allocated'].includes(order.status)"
                 class="primary-button inline-button"
                 :href="order.paymentLink"
                 target="_blank"
@@ -250,6 +250,7 @@ const copy = {
   quantityLabel: 'Qty',
   statusMap: {
     pending_payment: 'Pending Payment',
+    allocated: 'Allocated · Awaiting Payment',
     paid: 'Paid',
     shipped: 'Shipped',
     completed: 'Completed',
@@ -270,7 +271,7 @@ const copy = {
 }
 
 const statusOptions = computed(() =>
-  ['pending_payment', 'paid', 'shipped', 'completed', 'cancelled'].map((value) => ({
+  ['pending_payment', 'allocated', 'paid', 'shipped', 'completed', 'cancelled'].map((value) => ({
     value,
     label: copy.statusMap[value] || value,
   }))

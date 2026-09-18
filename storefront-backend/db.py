@@ -41,7 +41,7 @@ from psycopg.sql import Identifier, SQL
 DEFAULT_LANG = "zh"
 SUPPORTED_LANGS = ("zh", "en")
 HOME_SECTION_KEYS = ("bestSeller", "newArrival", "specialPrice")
-ORDER_STATUSES = ("pending_payment", "paid", "shipped", "completed", "cancelled")
+ORDER_STATUSES = ("pending_payment", "allocated", "paid", "shipped", "completed", "cancelled")
 
 
 def _safe_decimal(value: Any) -> Decimal:
@@ -173,7 +173,7 @@ def _sync_order_status_constraint(cur: Any) -> None:
         """
         ALTER TABLE orders
         ADD CONSTRAINT orders_status_check
-        CHECK (status IN ('pending_payment', 'paid', 'shipped', 'completed', 'cancelled'))
+        CHECK (status IN ('pending_payment', 'allocated', 'paid', 'shipped', 'completed', 'cancelled'))
         """
     )
 

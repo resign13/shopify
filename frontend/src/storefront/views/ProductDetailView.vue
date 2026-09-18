@@ -40,7 +40,7 @@
               type="button"
               @click="activeImage = image"
             >
-              <LazyImage :src="image" :alt="catalog.currentProduct.name" aspect-ratio="1 / 1.18" />
+              <LazyImage :width="160" :src="image" :alt="catalog.currentProduct.name" aspect-ratio="1 / 1.18" />
             </button>
           </div>
         </div>
@@ -72,7 +72,7 @@
               >
                 <span v-if="index === 0" class="detail-color-badge">Hot</span>
                 <span class="detail-color-tile-image">
-                  <LazyImage :src="option.image" :alt="option.colorName || option.productCode" aspect-ratio="3 / 4" />
+                  <LazyImage :width="160" :src="option.image" :alt="option.colorName || option.productCode" aspect-ratio="3 / 4" />
                 </span>
               </button>
             </div>

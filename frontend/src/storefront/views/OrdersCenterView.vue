@@ -168,7 +168,7 @@
                   :key="`${order.id}-${item.productId}-${item.sku}-${item.sizeCode}`"
                   class="account-order-line"
                 >
-                  <img v-if="item.image" :src="item.image" :alt="item.productName" class="account-order-line-image" />
+                  <img v-if="item.image" :src="imageUrl(item.image, 160)" loading="lazy" decoding="async" @error="restoreImage($event, item.image)" :alt="item.productName" class="account-order-line-image" />
                   <div class="account-order-line-copy">
                     <strong>{{ item.productName }}</strong>
                     <span>SKU {{ item.sku }}</span>
@@ -194,6 +194,11 @@
 </template>
 
 <script setup>
+import { imageUrl } from '../imageUrl'
+function restoreImage(event, original) {
+  if (event.target.getAttribute('src') !== original) event.target.src = original
+}
+
 import { computed, onMounted, ref } from 'vue'
 
 import { useCatalogStore } from '../stores/catalog'

@@ -66,7 +66,7 @@
                   <td class="inventory-sku">{{ row.colorSku }}</td>
                   <td>
                     <RouterLink class="inventory-image-link" :to="`/product/${row.slug}`">
-                      <LazyImage
+                      <LazyImage :width="160"
                         v-if="row.image"
                         :src="row.image"
                         :alt="row.name"

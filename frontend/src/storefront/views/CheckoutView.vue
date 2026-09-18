@@ -250,7 +250,7 @@
 
           <div class="checkout-item-list">
             <article v-for="item in cart.items" :key="item.lineKey" class="checkout-item">
-              <img :src="item.image" :alt="item.name" />
+              <img :src="imageUrl(item.image, 160)" loading="lazy" decoding="async" @error="restoreImage($event, item.image)" :alt="item.name" />
               <div class="checkout-item-copy">
                 <strong>{{ item.name }}</strong>
                 <p>SKU {{ item.sku }}</p>
@@ -289,6 +289,11 @@
 </template>
 
 <script setup>
+import { imageUrl } from '../imageUrl'
+function restoreImage(event, original) {
+  if (event.target.getAttribute('src') !== original) event.target.src = original
+}
+
 import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 

@@ -49,7 +49,7 @@
           @keydown.enter.prevent="handleHeroClick(slide.slotKey)"
           @keydown.space.prevent="handleHeroClick(slide.slotKey)"
         >
-          <LazyImage
+          <LazyImage :width="1600"
             :src="slide.image"
             :alt="slide.title"
             wrapper-class="home-hero-media"

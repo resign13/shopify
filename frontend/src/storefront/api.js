@@ -4,15 +4,10 @@ function resolveApiBase() {
 
   if (typeof window !== 'undefined') {
     const host = window.location.hostname
-    const protocol = window.location.protocol || 'https:'
-
-    if (host === 'gingtto.store' || host === 'www.gingtto.store') {
-      return `${protocol}//api.gingtto.store`
-    }
-
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://127.0.0.1:5001'
     }
+    return window.location.origin
   }
 
   return 'http://127.0.0.1:5001'

@@ -165,12 +165,12 @@ const inventoryRows = computed(() =>
       const normalized = normalizeSizeCode(item.sizeCode)
       const key = aliasToColumn[normalized]
       if (key) {
-        sizeStocks[key] += Number(item.stock || 0)
+        sizeStocks[key] += Math.max(0, Number(item.stock || 0))
       }
     })
 
-    const summedStock = Object.values(sizeStocks).reduce((sum, value) => sum + Number(value || 0), 0)
-    const totalStock = (product.sizePrices || []).length ? summedStock : Number(product.stock || 0)
+    const summedStock = (product.sizePrices || []).reduce((sum, item) => sum + Math.max(0, Number(item.stock || 0)), 0)
+    const totalStock = (product.sizePrices || []).length ? summedStock : Math.max(0, Number(product.stock || 0))
 
     return {
       id: product.id,

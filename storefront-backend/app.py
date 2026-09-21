@@ -31,6 +31,8 @@ def load_env_file(path: Path) -> None:
 
 load_env_file(BASE_DIR / ".env")
 
+import inventory_policy
+
 from flask import Flask, g, jsonify, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import check_password_hash
@@ -115,6 +117,7 @@ def sanitize_store_user(user: dict[str, Any]) -> dict[str, Any]:
 
 
 def serialize_product(product: dict[str, Any], lang: str) -> dict[str, Any]:
+    product = inventory_policy.public_inventory(product)
     category_label = product.get("categoryLabel") or product.get("categoryKey", "")
     name = localize(product["name"], lang)
     summary = localize(product["summary"], lang)

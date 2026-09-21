@@ -23,6 +23,7 @@ function hydrateItem(item) {
 
   return {
     ...item,
+    stock: Math.max(0, Number(item.stock || 0)),
     quantity,
     basePrice,
     price: unitPrice,

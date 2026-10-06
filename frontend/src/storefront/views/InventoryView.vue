@@ -119,7 +119,7 @@ import LazyImage from '../components/LazyImage.vue'
 import StorefrontPagination from '../components/StorefrontPagination.vue'
 import { useCatalogStore } from '../stores/catalog'
 import { useLocaleStore } from '../stores/locale'
-import { sortProductsByCategory } from '../utils/catalogOrder'
+import { inventorySku, sortInventoryProducts } from '../utils/inventoryOrder'
 
 const catalog = useCatalogStore()
 const locale = useLocaleStore()
@@ -156,7 +156,7 @@ const paginationLabels = {
 const categoryOptions = computed(() => catalog.categories || [])
 
 const inventoryRows = computed(() =>
-  sortProductsByCategory(catalog.products || [], categoryOptions.value).map((product) => {
+  sortInventoryProducts(catalog.products || [], categoryOptions.value).map((product) => {
     const sizeStocks = sizeColumns.reduce((result, column) => {
       result[column.key] = 0
       return result
@@ -177,7 +177,7 @@ const inventoryRows = computed(() =>
       id: product.id,
       slug: product.slug,
       name: product.name || product.productCode || product.sku || 'Untitled Product',
-      colorSku: product.productCode || product.sku || '—',
+      colorSku: inventorySku(product) || '—',
       image: product.image || '',
       colorName: product.colorName || '',
       categoryKey: product.categoryKey || '',

@@ -7,7 +7,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { createServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-test('inventory renders category-sorted products before pagination, preserving available stock', async () => {
+test('inventory renders category then natural SKU order before pagination, preserving available stock', async () => {
   const originalStorage = globalThis.localStorage
   const server = await createServer({
     configFile: false,
@@ -44,8 +44,10 @@ test('inventory renders category-sorted products before pagination, preserving a
     const shirts = Array.from({ length: 7 }, (_, i) => product('shirt', i + 1))
     const tracksuits = Array.from({ length: 21 }, (_, i) => product('tracksuit', i + 1))
     catalog.categories = [{ key: 'tracksuit', label: 'Tracksuit' }, { key: 'shirt', label: 'Shirt' }]
-    // Deliberately unsorted API response, with the first category after page 1.
-    catalog.products = [...shirts, ...tracksuits]
+    // Both categories and SKUs arrive unsorted. Natural order must place 2 before
+    // 10 and sorting must happen before selecting the first 20 records.
+    const unsortedProducts = [...shirts].reverse().concat([...tracksuits].reverse())
+    catalog.products = unsortedProducts
     const skus = (html) => [...html.matchAll(/<td[^>]*class="inventory-sku"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1])
     const html = await renderInventory()
     assert.deepEqual(skus(html), tracksuits.slice(0, 20).map((p) => p.productCode))
@@ -59,7 +61,15 @@ test('inventory renders category-sorted products before pagination, preserving a
       skus(await renderInventory()),
       [...shirts, ...tracksuits].slice(0, 20).map((p) => p.productCode),
     )
-    assert.deepEqual(catalog.products.map((p) => p.productCode), [...shirts, ...tracksuits].map((p) => p.productCode))
+    assert.deepEqual(catalog.products.map((p) => p.productCode), unsortedProducts.map((p) => p.productCode))
+
+    // Screenshot regression: colors from one SKU must stay together, instead of
+    // ZM codes interrupting the CS3102 / CS3103 groups.
+    catalog.products = ['ZM4760', 'CS3102-黑', 'CS3103-浅卡', 'CS3102-灰', 'ZM4762']
+      .map((sku, index) => ({ ...product('shirt', index), productCode: sku }))
+    assert.deepEqual(skus(await renderInventory()), [
+      'CS3102-灰', 'CS3102-黑', 'CS3103-浅卡', 'ZM4760', 'ZM4762',
+    ])
   } finally {
     globalThis.localStorage = originalStorage
     await server.close()

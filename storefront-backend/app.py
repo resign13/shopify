@@ -130,6 +130,8 @@ def serialize_product(product: dict[str, Any], lang: str) -> dict[str, Any]:
         "colorName": product.get("colorName", ""),
         "colorHex": product.get("colorHex", ""),
         "categoryKey": product["categoryKey"],
+        "categoryId": product.get("categoryId"),
+        "categorySortOrder": product.get("categorySortOrder"),
         "categoryLabel": category_label,
         "price": product["price"],
         "formattedPrice": f"${product['price']}",

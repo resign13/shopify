@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import catalog_order
 import inventory_policy
 import os
 from contextlib import contextmanager
@@ -399,6 +400,8 @@ def _build_product_result(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "colorName": row.get("color_name") or "",
                 "colorHex": row.get("color_hex") or "",
                 "categoryKey": row["category_key"],
+                "categoryId": int(row["category_id"]),
+                "categorySortOrder": int(row["category_sort_order"]),
                 "categoryLabel": row.get("category_label", ""),
                 "price": default_price,
                 "formattedPrice": f"${default_price}",
@@ -437,6 +440,8 @@ def _product_base_query() -> str:
           p.size_chart_image_url,
           p.description_image_url,
           pc.category_key,
+          pc.id AS category_id,
+          pc.sort_order AS category_sort_order,
           pct.label AS category_label
         FROM products p
         JOIN product_categories pc ON pc.id = p.category_id
@@ -486,7 +491,7 @@ def _list_color_options(
             SELECT id, slug, product_code, color_name, color_hex, main_image_url, stock
             FROM products
             WHERE is_active = TRUE AND color_group = %s
-            ORDER BY id
+            ORDER BY (SELECT sort_order FROM product_categories WHERE id=products.category_id), category_id, id
             """,
             (color_group,),
         )
@@ -503,7 +508,7 @@ def _list_color_options(
             FROM products
             WHERE is_active = TRUE
               AND (color_group = %s OR product_code = %s OR product_code ILIKE %s)
-            ORDER BY id
+            ORDER BY (SELECT sort_order FROM product_categories WHERE id=products.category_id), category_id, id
             """,
             (family_prefix, family_prefix, f"{family_prefix}-%"),
         )
@@ -558,7 +563,7 @@ def list_products() -> list[dict[str, Any]]:
     rows = _fetch_all(
         _product_base_query() + """
         WHERE p.is_active = TRUE
-        ORDER BY p.id
+        ORDER BY pc.sort_order, pc.id, p.id
         """,
         (DEFAULT_LANG,),
     )
@@ -765,12 +770,17 @@ def get_homepage_config() -> dict[str, Any]:
         if not hero_banners[key]:
             hero_banners[key] = legacy_banner_images.get(key) or defaults["heroBanners"][key]
 
-    return {
+    config = {
         "heroBanners": hero_banners,
         "sectionProductIds": section_product_ids,
         "collectionProductIds": collection_product_ids,
         "displayCategoryKeys": display_category_keys,
     }
+    return catalog_order.arrange_config(
+        config,
+        _fetch_all('SELECT p.id,p.category_id,pc.sort_order FROM products p JOIN product_categories pc ON pc.id=p.category_id'),
+        _fetch_all('SELECT id,category_key,sort_order FROM product_categories WHERE is_active=TRUE'),
+    )
 
 
 def list_category_labels(lang: str) -> list[dict[str, str]]:

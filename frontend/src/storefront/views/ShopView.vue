@@ -37,6 +37,7 @@
         <label class="shop-sort-box">
           <span>Sort By</span>
           <select v-model="sortOrder">
+            <option value="category">Category Order</option>
             <option value="newest">Newest</option>
             <option value="price-desc">Price: High to Low</option>
             <option value="price-asc">Price: Low to High</option>
@@ -95,6 +96,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { compareProductCategories } from '../utils/catalogOrder'
 
 import ProductCard from '../components/ProductCard.vue'
 import StorefrontPagination from '../components/StorefrontPagination.vue'
@@ -122,7 +124,7 @@ const category = ref(route.query.category?.toString() || '')
 const keyword = ref(route.query.keyword?.toString() || '')
 const searchDraft = ref(route.query.keyword?.toString() || '')
 const stockOnly = ref(false)
-const sortOrder = ref('newest')
+const sortOrder = ref('category')
 const currentPage = ref(1)
 const pageSize = ref(20)
 const productSkeletons = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -174,8 +176,14 @@ const sortedProducts = computed(() => {
     return true
   })
 
-  if (sortOrder.value === 'newest') {
+  if (sortOrder.value === 'category' && isSectionPage.value) {
+    return [...items].sort(compareProductCategories)
+  }
+
+  if (sortOrder.value === 'newest' || sortOrder.value === 'category') {
     return [...items].sort((a, b) => {
+      const categoryDifference = compareProductCategories(a, b)
+      if (categoryDifference) return categoryDifference
       const aTime = Date.parse(a.createdAt || a.updatedAt || '') || 0
       const bTime = Date.parse(b.createdAt || b.updatedAt || '') || 0
       if (bTime !== aTime) return bTime - aTime
@@ -184,14 +192,14 @@ const sortedProducts = computed(() => {
   }
 
   if (sortOrder.value === 'price-asc') {
-    return [...items].sort((a, b) => Number(a.price || 0) - Number(b.price || 0))
+    return [...items].sort((a, b) => compareProductCategories(a, b) || Number(a.price || 0) - Number(b.price || 0))
   }
 
   if (sortOrder.value === 'price-desc') {
-    return [...items].sort((a, b) => Number(b.price || 0) - Number(a.price || 0))
+    return [...items].sort((a, b) => compareProductCategories(a, b) || Number(b.price || 0) - Number(a.price || 0))
   }
 
-  return items
+  return [...items].sort(compareProductCategories)
 })
 
 const paginatedProducts = computed(() => {

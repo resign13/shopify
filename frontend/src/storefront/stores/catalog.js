@@ -98,10 +98,12 @@ export const useCatalogStore = defineStore('catalog', {
           newArrival: (data.sections?.newArrival || []).map((item) => normalizeProductCategory(item)),
           specialPrice: (data.sections?.specialPrice || []).map((item) => normalizeProductCategory(item)),
         }
-        this.collectionSections = {
-          bestSeller: (data.collectionSections?.bestSeller || []).map((item) => normalizeProductCategory(item)),
-          newArrival: (data.collectionSections?.newArrival || []).map((item) => normalizeProductCategory(item)),
-          specialPrice: (data.collectionSections?.specialPrice || []).map((item) => normalizeProductCategory(item)),
+        // Home and collection requests can finish in either order. An omitted
+        // collection must not erase products fetched by the collection endpoint.
+        for (const key of ['bestSeller', 'newArrival', 'specialPrice']) {
+          if (Array.isArray(data.collectionSections?.[key])) {
+            this.collectionSections[key] = data.collectionSections[key].map((item) => normalizeProductCategory(item))
+          }
         }
         this.homeCategories = (data.categories || []).map((item) => normalizeCategoryLabel(item))
         this.categories = (data.allCategories || data.categories || []).map((item) => normalizeCategoryLabel(item))

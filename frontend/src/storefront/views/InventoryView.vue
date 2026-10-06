@@ -119,6 +119,7 @@ import LazyImage from '../components/LazyImage.vue'
 import StorefrontPagination from '../components/StorefrontPagination.vue'
 import { useCatalogStore } from '../stores/catalog'
 import { useLocaleStore } from '../stores/locale'
+import { sortProductsByCategory } from '../utils/catalogOrder'
 
 const catalog = useCatalogStore()
 const locale = useLocaleStore()
@@ -155,7 +156,7 @@ const paginationLabels = {
 const categoryOptions = computed(() => catalog.categories || [])
 
 const inventoryRows = computed(() =>
-  (catalog.products || []).map((product) => {
+  sortProductsByCategory(catalog.products || [], categoryOptions.value).map((product) => {
     const sizeStocks = sizeColumns.reduce((result, column) => {
       result[column.key] = 0
       return result

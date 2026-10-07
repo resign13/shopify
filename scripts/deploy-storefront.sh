@@ -34,6 +34,14 @@ rollback() {
   trap - ERR
   # Never restart a legacy balance-resetting backend after negative balances exist.
   systemctl stop "$service" || true
+  ownership=$(sudo -u postgres psql -X -d smawell_admin -At -c "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='owner_admin_id')" 2>/dev/null) || ownership=unknown
+  if [ "$ownership" != f ]; then
+    if ! tar -xOf "$backup/code.tar.gz" "$backend/db.py" | grep 'linked_admin_user_id' > /dev/null; then
+      echo "Legacy rollback blocked: salesperson checkout attribution required. Current code/database retained; backup: $backup."
+      systemctl restart "$service" || true
+      exit "$status"
+    fi
+  fi
   temporary=$(sudo -u postgres psql -X -d smawell_admin -At -c "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='product_size_prices' AND column_name='temporary_inbound')" 2>/dev/null) || temporary=unknown
   if [ "$temporary" != f ]; then
     if ! tar -xOf "$backup/code.tar.gz" "$backend/inventory_policy.py" | grep "'temporaryInbound'" > /dev/null; then

@@ -50,12 +50,12 @@
           <h1>{{ catalog.currentProduct.name }}</h1>
 
           <div class="detail-price-stack">
-            <p class="detail-price">{{ formatCurrency(selectedSizePrice) }}</p>
+            <p class="detail-price">{{ formatCurrency(displayPrice) }}</p>
             <p class="detail-code-line">
               <span>{{ detailCopy.codeLabel }}</span>
               <strong>{{ catalog.currentProduct.productCode || catalog.currentProduct.sku }}</strong>
             </p>
-            <p class="detail-subprice">{{ selectedSizeLabel }} · {{ detailCopy.basePriceLabel }} {{ formatCurrency(selectedSizePrice) }}</p>
+            <p class="detail-subprice">{{ selectedUnits }} pcs · {{ formatCurrency(selectedTotal) }}</p>
           </div>
 
           <div v-if="colorOptions.length" class="detail-option-group detail-color-section">
@@ -67,6 +67,7 @@
                 v-for="(option, index) in colorOptions"
                 :key="option.slug"
                 :class="['detail-color-tile', { active: option.slug === catalog.currentProduct.slug }]"
+                :aria-label="`Color ${option.colorName || option.productCode}`"
                 type="button"
                 @click="handleColorChange(option)"
               >
@@ -78,53 +79,63 @@
             </div>
           </div>
 
-          <div class="detail-option-group">
+          <div class="detail-option-group detail-size-order-section">
             <div class="detail-size-head">
-              <strong>{{ locale.t('detail.size') }}: {{ selectedSizeLabel }}</strong>
-              <span>{{ locale.t('detail.sizeFinder') }}</span>
+              <strong>{{ locale.t('detail.size') }}</strong>
+              <span>{{ detailCopy.sizeSelectionHint }}</span>
             </div>
 
-            <div class="detail-size-grid">
-              <button
-                v-for="size in catalog.currentProduct.sizes"
-                :key="size"
-                :class="['detail-size-button', { active: size === selectedSize }]"
-                type="button"
-                @click="selectedSize = size"
+            <div class="detail-size-order-card">
+              <div class="detail-size-order-head">
+                <span>{{ locale.t('detail.size') }}</span>
+                <span>{{ detailCopy.priceLabel }}</span>
+                <span>{{ detailCopy.stockLabel }}</span>
+                <span>{{ detailCopy.quantityLabel }}</span>
+              </div>
+              <div
+                v-for="row in sizeRows"
+                :key="row.sizeCode || '__default'"
+                :class="['detail-size-order-row', { 'is-disabled': row.stock <= 0 }]"
               >
-                {{ size }}
-              </button>
-            </div>
-
-            <div class="detail-stock-banner">
-              <span class="detail-stock-inline">{{ detailCopy.stockLabel }}: {{ selectedSizeStock }}</span>
-            </div>
-          </div>
-
-          <div class="detail-option-group detail-quantity-section">
-            <div class="detail-size-head">
-              <strong>{{ detailCopy.quantityLabel }}</strong>
-              <span>{{ detailCopy.quantityHint }}</span>
-            </div>
-
-            <div class="detail-quantity-card">
-              <div class="detail-quantity-stepper">
-                <button type="button" class="detail-qty-button" :disabled="!canPurchase" @click="decreaseQuantity">-</button>
-                <input
-                  v-model.number="selectedQuantity"
-                  class="detail-qty-input"
-                  type="number"
-                  min="1"
-                  :max="maxSelectableQuantity"
-                  :disabled="!canPurchase"
-                  @change="normalizeQuantity"
-                />
-                <button type="button" class="detail-qty-button" :disabled="!canPurchase" @click="increaseQuantity">+</button>
+                <strong>{{ row.sizeCode || detailCopy.defaultSizeLabel }}</strong>
+                <span class="detail-size-order-price">{{ formatCurrency(row.price) }}</span>
+                <span :class="['detail-size-order-stock', { 'is-available': row.stock > 0 }]">
+                  {{ row.stock > 0 ? `${row.stock} ${detailCopy.inStockLabel}` : detailCopy.outOfStockLabel }}
+                </span>
+                <div class="detail-size-stepper">
+                  <button
+                    type="button"
+                    :disabled="row.stock <= 0 || quantityFor(row) <= 0"
+                    :aria-label="`Decrease ${row.sizeCode || detailCopy.defaultSizeLabel}`"
+                    @click="decreaseSize(row)"
+                  >
+                    -
+                  </button>
+                  <input
+                    :value="quantityFor(row)"
+                    type="number"
+                    min="0"
+                    :max="row.stock"
+                    :disabled="row.stock <= 0"
+                    :aria-label="`${detailCopy.quantityLabel} ${row.sizeCode || detailCopy.defaultSizeLabel}`"
+                    @input="updateSizeInput(row, $event)"
+                  />
+                  <button
+                    type="button"
+                    :disabled="row.stock <= 0 || quantityFor(row) >= row.stock"
+                    :aria-label="`Increase ${row.sizeCode || detailCopy.defaultSizeLabel}`"
+                    @click="increaseSize(row)"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-              <div class="detail-quantity-meta">
-                <strong>{{ formatCurrency(activeUnitPrice) }}</strong>
-                <span>{{ detailCopy.selectedSizeLabel }} {{ selectedSizeLabel }}</span>
-              </div>
+              <div v-if="!sizeRows.length" class="detail-size-empty">{{ detailCopy.noSizesLabel }}</div>
+            </div>
+
+            <div class="detail-size-summary">
+              <span>{{ selectedUnits }} {{ detailCopy.unitsLabel }} · {{ selectedOrderLines.length }} {{ detailCopy.sizesSelectedLabel }}</span>
+              <strong>{{ formatCurrency(selectedTotal) }}</strong>
             </div>
           </div>
 
@@ -186,13 +197,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import LazyImage from '../components/LazyImage.vue'
 import { useCartStore } from '../stores/cart'
 import { useCatalogStore } from '../stores/catalog'
 import { useLocaleStore } from '../stores/locale'
+import { productSizeRows, normalizeSizeQuantity, selectedSizeLines, addSizeLinesToCart } from '../utils/sizeOrder'
 
 const CATEGORY_LABELS = {
   womenswear: 'Womenswear',
@@ -218,8 +230,7 @@ const cart = useCartStore()
 const catalog = useCatalogStore()
 const locale = useLocaleStore()
 const activeImage = ref('')
-const selectedSize = ref('')
-const selectedQuantity = ref(1)
+const selectedQuantities = reactive({})
 const addToCartSuccess = ref('')
 let addToCartSuccessTimer = null
 const sizeChartExpanded = ref(false)
@@ -231,11 +242,16 @@ const benefitSkeletons = [1, 2, 3, 4]
 const detailCopy = {
   colorLabel: 'Color',
   codeLabel: 'Code',
-  basePriceLabel: 'Base price',
+  priceLabel: 'Price',
   stockLabel: 'Available Stock',
-  selectedSizeLabel: 'Selected size:',
+  inStockLabel: 'in stock',
   quantityLabel: 'Quantity',
-  quantityHint: 'Adjust quantity before adding to cart',
+  sizeSelectionHint: 'Select quantities for each size',
+  outOfStockLabel: 'Out of stock',
+  defaultSizeLabel: 'Standard',
+  noSizesLabel: 'No sizes available',
+  unitsLabel: 'pcs',
+  sizesSelectedLabel: 'sizes selected',
   sizeChartTitle: 'Size Chart',
   descriptionImageTitle: 'Description Image',
 }
@@ -257,24 +273,19 @@ const categoryLabel = computed(() => {
   return 'Category'
 })
 
-const selectedSizeRecord = computed(() => {
-  const sizePrices = catalog.currentProduct?.sizePrices || []
-  if (!sizePrices.length) return null
-  return sizePrices.find((item) => item.sizeCode === selectedSize.value) || null
-})
+const sizeRows = computed(() => productSizeRows(catalog.currentProduct))
+const selectedOrderLines = computed(() => selectedSizeLines(sizeRows.value, selectedQuantities))
 
-const selectedSizePrice = computed(() => Number(selectedSizeRecord.value?.price ?? catalog.currentProduct?.price ?? 0))
-const selectedSizeStock = computed(() => {
-  if (!catalog.currentProduct) return 0
-  const sizePrices = catalog.currentProduct.sizePrices || []
-  if (!sizePrices.length) return Number(catalog.currentProduct.stock ?? 0)
-  return Number(selectedSizeRecord.value?.stock ?? 0)
-})
-const selectedSizeLabel = computed(() => selectedSize.value || '--')
-const canPurchase = computed(() => selectedSizeStock.value > 0)
-const maxSelectableQuantity = computed(() => Math.max(1, selectedSizeStock.value || 1))
+const selectedUnits = computed(() =>
+  selectedOrderLines.value.reduce((sum, row) => sum + row.quantity, 0)
+)
 
-const activeUnitPrice = computed(() => selectedSizePrice.value)
+const selectedTotal = computed(() =>
+  selectedOrderLines.value.reduce((sum, row) => sum + row.quantity * Math.round(row.price * 100), 0) / 100
+)
+
+const displayPrice = computed(() => Number(selectedOrderLines.value[0]?.price ?? catalog.currentProduct?.price ?? 0))
+const canPurchase = computed(() => selectedUnits.value > 0)
 
 
 function formatCurrency(value) {
@@ -286,25 +297,33 @@ function formatCurrency(value) {
   }).format(Number(value || 0))
 }
 
-function normalizeQuantity() {
-  if (!canPurchase.value) {
-    selectedQuantity.value = 1
-    return
-  }
-  const max = Number(selectedSizeStock.value || 1)
-  const value = Number(selectedQuantity.value || 1)
-  selectedQuantity.value = Math.max(1, Math.min(value, max))
+function quantityFor(row) {
+  return Number(selectedQuantities[row.sizeCode] || 0)
 }
 
-function decreaseQuantity() {
-  if (!canPurchase.value) return
-  selectedQuantity.value = Math.max(1, Number(selectedQuantity.value || 1) - 1)
+function setSizeQuantity(row, value) {
+  const next = normalizeSizeQuantity(value, row.stock)
+  selectedQuantities[row.sizeCode] = next
+  return next
 }
 
-function increaseQuantity() {
-  if (!canPurchase.value) return
-  const max = Number(selectedSizeStock.value || 1)
-  selectedQuantity.value = Math.min(max, Number(selectedQuantity.value || 1) + 1)
+function updateSizeInput(row, event) {
+  event.target.value = setSizeQuantity(row, event.target.value)
+}
+
+function decreaseSize(row) {
+  setSizeQuantity(row, quantityFor(row) - 1)
+}
+
+function increaseSize(row) {
+  setSizeQuantity(row, quantityFor(row) + 1)
+}
+
+function resetSelectedQuantities(product) {
+  Object.keys(selectedQuantities).forEach((key) => delete selectedQuantities[key])
+  productSizeRows(product).forEach(row => {
+    selectedQuantities[row.sizeCode] = 0
+  })
 }
 
 function loadDetail() {
@@ -333,31 +352,15 @@ function showAddToCartSuccess() {
 
 function addToCart() {
   if (!catalog.currentProduct || !canPurchase.value) return
-  normalizeQuantity()
-  cart.addItem(
-    {
-      ...catalog.currentProduct,
-      basePrice: selectedSizePrice.value,
-      stock: selectedSizeStock.value,
-    },
-    selectedQuantity.value,
-    selectedSize.value
-  )
+
+  addSizeLinesToCart(cart, catalog.currentProduct, selectedOrderLines.value)
   showAddToCartSuccess()
 }
 
 function buyNow() {
   if (!catalog.currentProduct || !canPurchase.value) return
-  normalizeQuantity()
-  cart.setSingleItem(
-    {
-      ...catalog.currentProduct,
-      basePrice: selectedSizePrice.value,
-      stock: selectedSizeStock.value,
-    },
-    selectedQuantity.value,
-    selectedSize.value
-  )
+
+  addSizeLinesToCart(cart, catalog.currentProduct, selectedOrderLines.value, true)
   router.push('/checkout')
 }
 
@@ -366,22 +369,22 @@ watch(
   (product) => {
     if (!product) return
     activeImage.value = product.gallery?.[0] || product.image
-    selectedSize.value = product.sizes?.[0] || ''
-    selectedQuantity.value = 1
+    resetSelectedQuantities(product)
+    addToCartSuccess.value = ''
     sizeChartExpanded.value = false
     descriptionExpanded.value = false
   },
   { immediate: true }
 )
 
-watch(selectedSizeStock, () => {
-  normalizeQuantity()
-})
-
 watch(() => route.params.slug, loadDetail)
 watch(() => locale.current, loadDetail)
 
 onMounted(() => {
   loadDetail()
+})
+
+onBeforeUnmount(() => {
+  if (addToCartSuccessTimer) window.clearTimeout(addToCartSuccessTimer)
 })
 </script>

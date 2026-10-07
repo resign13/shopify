@@ -21,7 +21,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Build frontend
         working-directory: frontend
-        run: npm ci && node --test src/storefront/stores/catalog.test.js src/storefront/utils/catalogOrder.test.js src/storefront/utils/inventoryOrder.test.js src/storefront/utils/navigation.test.js src/storefront/views/InventoryView.test.js && npm run build
+        run: npm ci && node --test src/storefront/stores/catalog.test.js src/storefront/utils/catalogOrder.test.js src/storefront/utils/inventoryOrder.test.js src/storefront/utils/navigation.test.js src/storefront/utils/sizeOrder.test.js src/storefront/views/InventoryView.test.js src/storefront/views/ProductDetailView.test.js && npm run build
       - name: Package release without runtime data or secrets
         run: |
           tar --exclude=.env --exclude='.env.*' --exclude=.venv --exclude=_vendor --exclude=uploads --exclude=data --exclude=__pycache__ -czf release.tar.gz storefront-backend scripts frontend/dist

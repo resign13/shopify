@@ -220,6 +220,8 @@ def _empty_bundle() -> dict[str, str]:
 
 
 def _apply_schema_migrations(cur: Any) -> None:
+    import sales_ownership
+    sales_ownership.migrate(cur)
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS size_chart_image_url TEXT")
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS description_image_url TEXT")
     cur.execute(
@@ -1009,9 +1011,10 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, status
+                SELECT id, status, linked_admin_user_id
                 FROM store_users
                 WHERE id = %s
+                FOR SHARE
                 """,
                 (payload["userId"],),
             )
@@ -1087,18 +1090,19 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
             cur.execute(
                 """
                 INSERT INTO orders (
-                  order_no, store_user_id, status, contact_name, contact_email, phone, country,
+                  order_no, store_user_id, owner_admin_id, status, contact_name, contact_email, phone, country,
                   shipping_address, note, label_pdf_url, label_image_urls, total_amount, marketing_opt_in, first_name, last_name,
                   address_line1, apartment, city, state, postal_code, created_at, updated_at
                 )
                 VALUES (
-                  %s, %s, 'pending_payment', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
+                  %s, %s, %s, 'pending_payment', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
                 )
                 RETURNING id
                 """,
                 (
                     f"TEMP-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
                     payload["userId"],
+                    user["linked_admin_user_id"],
                     payload["contactName"],
                     payload.get("contactValue", ""),
                     payload["phone"],

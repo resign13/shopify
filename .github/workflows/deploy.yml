@@ -14,6 +14,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify checkout attribution
+        working-directory: storefront-backend
+        run: pip install -r requirements.txt && python -m unittest -v test_sales_ownership
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

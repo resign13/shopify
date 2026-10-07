@@ -1,11 +1,6 @@
 <template>
   <section class="shop-page">
     <div class="container">
-      <section v-if="isSectionPage" class="shop-section-head">
-        <p class="eyebrow">{{ sectionPageEyebrow }}</p>
-        <h1>{{ sectionPageTitle }}</h1>
-      </section>
-
       <section class="shop-filter-row shop-filter-row-search">
         <form class="shop-search-bar" @submit.prevent="submitSearch">
           <input
@@ -108,18 +103,6 @@ const router = useRouter()
 const catalog = useCatalogStore()
 const locale = useLocaleStore()
 
-const sectionKeyBySlug = {
-  'best-seller': 'bestSeller',
-  'new-arrival': 'newArrival',
-  'special-price': 'specialPrice',
-}
-
-const sectionTitleByKey = {
-  bestSeller: 'BEST SELLER',
-  newArrival: 'NEW ARRIVAL',
-  specialPrice: 'PRE-ORDER',
-}
-
 const category = ref(route.query.category?.toString() || '')
 const keyword = ref(route.query.keyword?.toString() || '')
 const searchDraft = ref(route.query.keyword?.toString() || '')
@@ -138,24 +121,11 @@ const paginationLabels = computed(() => ({
   itemLabelDisplay: 'Products',
 }))
 
-const sectionSlug = computed(() => route.params.sectionSlug?.toString() || '')
-const sectionKey = computed(() => sectionKeyBySlug[sectionSlug.value] || '')
-const isSectionPage = computed(() => Boolean(sectionKey.value))
-const sectionPageEyebrow = computed(() => 'CURATED COLLECTION')
-const sectionPageTitle = computed(() => sectionTitleByKey[sectionKey.value] || 'SHOP')
-
-const baseProducts = computed(() => {
-  if (isSectionPage.value) {
-    return catalog.collectionSections?.[sectionKey.value] || []
-  }
-  return catalog.products || []
-})
-
 const sortedProducts = computed(() => {
   const normalizedKeyword = keyword.value.trim().toLowerCase()
-  const items = baseProducts.value.filter((item) => {
+  const items = (catalog.products || []).filter((item) => {
     if (stockOnly.value && Number(item.stock || 0) < 1) return false
-    if (!isSectionPage.value && category.value && item.categoryKey !== category.value) return false
+    if (category.value && item.categoryKey !== category.value) return false
 
     if (normalizedKeyword) {
       const haystack = [
@@ -175,10 +145,6 @@ const sortedProducts = computed(() => {
 
     return true
   })
-
-  if (sortOrder.value === 'category' && isSectionPage.value) {
-    return [...items].sort(compareProductCategories)
-  }
 
   if (sortOrder.value === 'newest' || sortOrder.value === 'category') {
     return [...items].sort((a, b) => {
@@ -209,17 +175,12 @@ const paginatedProducts = computed(() => {
 
 function buildQuery() {
   const query = {}
-  if (!isSectionPage.value && category.value) query.category = category.value
+  if (category.value) query.category = category.value
   if (keyword.value) query.keyword = keyword.value
   return query
 }
 
 async function loadList() {
-  if (isSectionPage.value) {
-    await catalog.loadCollectionSection(sectionSlug.value, locale.current)
-    return
-  }
-
   await catalog.loadProducts(
     { category: category.value, keyword: keyword.value },
     locale.current
@@ -244,10 +205,9 @@ watch([stockOnly, sortOrder, pageSize], () => {
 })
 
 watch(
-  () => [route.params.sectionSlug, route.query.category, route.query.keyword],
-  ([nextSectionSlug, nextCategory, nextKeyword]) => {
-    const hasSection = Boolean(sectionKeyBySlug[nextSectionSlug?.toString() || ''])
-    category.value = hasSection ? '' : nextCategory?.toString() || ''
+  () => [route.query.category, route.query.keyword],
+  ([nextCategory, nextKeyword]) => {
+    category.value = nextCategory?.toString() || ''
     keyword.value = nextKeyword?.toString() || ''
     searchDraft.value = keyword.value
     currentPage.value = 1
@@ -272,19 +232,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.shop-section-head {
-  display: grid;
-  gap: 8px;
-  padding-bottom: 6px;
-}
-
-.shop-section-head h1 {
-  margin: 0;
-  font-size: clamp(2rem, 4vw, 3.6rem);
-  line-height: 0.96;
-  letter-spacing: -0.04em;
-}
-
 .shop-results-head {
   margin: 18px 0 0;
 }

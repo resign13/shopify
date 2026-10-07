@@ -1,7 +1,7 @@
 <template>
   <header class="site-header">
     <div class="container header-inner">
-      <RouterLink class="brand brand-wordmark" :to="auth.isAuthenticated ? '/home' : '/login'">
+      <RouterLink class="brand brand-wordmark" :to="auth.isAuthenticated ? defaultStorefrontPath : '/login'">
         {{ locale.t('brand.name') }}
       </RouterLink>
 
@@ -35,22 +35,9 @@
           </div>
         </div>
 
-        <RouterLink class="nav-link-button" to="/collections/best-seller">
-          {{ navCopy.bestSeller }}
-        </RouterLink>
-        <RouterLink class="nav-link-button" to="/collections/new-arrival">
-          {{ navCopy.newArrival }}
-        </RouterLink>
-        <RouterLink class="nav-link-button" to="/collections/special-price">
-          {{ navCopy.preOrder }}
-        </RouterLink>
         <RouterLink class="nav-link-button" to="/inventory">
           {{ navCopy.inventory }}
         </RouterLink>
-        <RouterLink class="nav-link-button" :to="{ path: '/home', hash: '#about' }">
-          {{ navCopy.about }}
-        </RouterLink>
-        <a class="nav-link-button" href="/home#contact">{{ navCopy.contact }}</a>
       </nav>
       <div v-else class="header-spacer"></div>
 
@@ -101,6 +88,7 @@ import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 import { useLocaleStore } from '../stores/locale'
 import { useCatalogStore } from '../stores/catalog'
+import { defaultStorefrontPath } from '../utils/navigation'
 
 const auth = useAuthStore()
 const cart = useCartStore()
@@ -110,12 +98,7 @@ const catalog = useCatalogStore()
 const navCopy = {
   dropdownText: 'Explore the full GINGTTO catalog by category.',
   shop: 'SHOP',
-  bestSeller: 'BEST SELLER',
-  newArrival: 'NEW ARRIVAL',
-  preOrder: 'PRE-ORDER',
   inventory: 'INVENTORY',
-  about: 'ABOUT',
-  contact: 'CONTACT',
   viewAll: 'VIEW ALL PRODUCTS',
   login: 'Sign In',
   logout: 'Logout',

@@ -35,11 +35,10 @@ import { computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '../stores/auth'
-import { useCatalogStore } from '../stores/catalog'
+import { defaultStorefrontPath } from '../utils/navigation'
 import { useLocaleStore } from '../stores/locale'
 
 const auth = useAuthStore()
-const catalog = useCatalogStore()
 const locale = useLocaleStore()
 const route = useRoute()
 const router = useRouter()
@@ -47,14 +46,14 @@ const router = useRouter()
 const loginCopy = computed(() => ({
   overline: 'BUYER ACCESS',
   title: 'GINGTTO Buyer Login',
-  text: 'Sign in to view the homepage, category browsing, product detail, cart and checkout.',
+  text: 'Sign in to view inventory, browse products and place orders.',
   protectedNotice: 'This page is available after login.',
   email: 'Email',
   password: 'Password',
   submit: 'Login to Continue',
-  brandTitle: 'A premium apparel storefront for womenswear and menswear',
-  brandText: 'GINGTTO now presents womenswear, menswear, pants, denim and outerwear with a cleaner homepage, richer media and a cart-based checkout flow.',
-  brandPills: ['Womenswear', 'Menswear', 'Cart checkout'],
+  brandTitle: 'Inventory and ordering in one place',
+  brandText: 'Check available stock by color and size, browse the GINGTTO catalog and place orders with a cart-based checkout flow.',
+  brandPills: ['Inventory', 'Shop', 'Cart checkout'],
 }))
 
 const form = reactive({
@@ -65,7 +64,6 @@ const form = reactive({
 async function handleLogin() {
   const ok = await auth.login(form)
   if (!ok) return
-  catalog.primeHomeLoading()
-  await router.replace('/home')
+  await router.replace(defaultStorefrontPath)
 }
 </script>

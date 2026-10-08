@@ -231,6 +231,7 @@ def _apply_schema_migrations(cur: Any) -> None:
           product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
           size_code VARCHAR(32) NOT NULL,
           price NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
+          defective_pending INTEGER NOT NULL DEFAULT 0 CHECK (defective_pending >= 0),
           sort_order INTEGER NOT NULL DEFAULT 0,
           UNIQUE (product_id, size_code)
         )

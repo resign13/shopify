@@ -26,7 +26,7 @@ stock_snapshot() {
     'negativeSizes',(SELECT count(*) FROM product_size_prices WHERE stock<0),
     'productBalances',(SELECT md5(string_agg(id::text||':'||stock::text,',' ORDER BY id)) FROM products),
     'sizeBalances',(SELECT md5(string_agg(id::text||':'||stock::text,',' ORDER BY id)) FROM product_size_prices),
-    'pipelineBalances',(SELECT md5(string_agg(id::text||':'||contract_pending::text||':'||pending_inspection::text||':'||pending_inbound::text||':'||COALESCE(to_jsonb(s)->>'temporary_inbound','0'),',' ORDER BY id)) FROM product_size_prices s));"
+    'pipelineBalances',(SELECT md5(string_agg(id::text||':'||contract_pending::text||':'||pending_inspection::text||':'||pending_inbound::text||':'||COALESCE(to_jsonb(s)->>'temporary_inbound','0')||':'||COALESCE(to_jsonb(s)->>'defective_pending','0'),',' ORDER BY id)) FROM product_size_prices s));"
 }
 stock_snapshot > "$backup/inventory-before.json"
 rollback() {
@@ -46,6 +46,14 @@ rollback() {
   if [ "$temporary" != f ]; then
     if ! tar -xOf "$backup/code.tar.gz" "$backend/inventory_policy.py" | grep "'temporaryInbound'" > /dev/null; then
       echo "Legacy rollback blocked: temporary inventory compatibility required. Keeping current code and database; backup retained at $backup."
+      systemctl restart "$service" || true
+      exit "$status"
+    fi
+  fi
+  defective=$(sudo -u postgres psql -X -d smawell_admin -At -c "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='product_size_prices' AND column_name='defective_pending')" 2>/dev/null) || defective=unknown
+  if [ "$defective" != f ]; then
+    if ! tar -xOf "$backup/code.tar.gz" "$backend/inventory_policy.py" | grep "'defectivePending'" > /dev/null || ! tar -xOf "$backup/code.tar.gz" "$backend/inventory_policy.py" | grep 'defective_reservation_check' > /dev/null; then
+      echo "Legacy rollback blocked: defect visibility and reservation compatibility required. Current code/database retained; backup: $backup."
       systemctl restart "$service" || true
       exit "$status"
     fi
@@ -83,6 +91,7 @@ for attempt in $(seq 1 20); do
     systemctl is-active --quiet "$service"
     .venv/bin/python "$root/scripts/verify-category-order.py" "$backend"
     .venv/bin/python "$root/scripts/verify-temporary-inbound.py" "$backend"
+    .venv/bin/python "$root/scripts/verify-defective-inventory.py" "$backend"
     .venv/bin/python "$root/scripts/verify-sales-access.py" "$backend"
     stock_snapshot > "$backup/inventory-after.json"
     echo "Inventory before release: $(cat "$backup/inventory-before.json")"

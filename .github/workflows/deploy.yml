@@ -3,13 +3,43 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  pull_request:
+    branches: [main]
 permissions:
   contents: read
 concurrency:
-  group: production-store
+  group: store-${{ github.event.pull_request.number || 'production' }}
   cancel-in-progress: false
 jobs:
+  verify-notifications:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: gingtto_store_notifications_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fixture-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - working-directory: storefront-backend
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGDATABASE: gingtto_store_notifications_test
+          PGUSER: postgres
+          PGPASSWORD: fixture-only-password
+        run: pip install -r requirements.txt && python -m unittest -v test_order_notifications test_sales_ownership test_temporary_inbound
   deploy:
+    needs: verify-notifications
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -30,7 +60,7 @@ jobs:
         run: npm ci && node --test src/storefront/stores/catalog.test.js src/storefront/utils/catalogOrder.test.js src/storefront/utils/inventoryOrder.test.js src/storefront/utils/navigation.test.js src/storefront/utils/sizeOrder.test.js src/storefront/views/InventoryView.test.js src/storefront/views/ProductDetailView.test.js && npm run build
       - name: Package release without runtime data or secrets
         run: |
-          tar --exclude=.env --exclude='.env.*' --exclude=.venv --exclude=_vendor --exclude=uploads --exclude=data --exclude=__pycache__ -czf release.tar.gz storefront-backend scripts frontend/dist
+          tar --exclude=.env --exclude='.env.*' --exclude=.venv --exclude=_vendor --exclude=uploads --exclude=data --exclude=__pycache__ -czf release.tar.gz storefront-backend scripts frontend/dist db
       - name: Upload, back up and deploy over verified SSH
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}

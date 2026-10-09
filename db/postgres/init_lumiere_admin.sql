@@ -1,0 +1,259 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS admin_users (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  password_hash TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_admin_users_email_lower
+  ON admin_users (LOWER(email));
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  admin_user_id BIGINT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+  token VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_user_id
+  ON admin_sessions (admin_user_id);
+
+CREATE TABLE IF NOT EXISTS store_users (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  company_name VARCHAR(255),
+  linked_admin_user_id BIGINT REFERENCES admin_users(id),
+  email VARCHAR(255) NOT NULL,
+  password_hash TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_store_users_email_lower
+  ON store_users (LOWER(email));
+
+CREATE TABLE IF NOT EXISTS order_customer_templates (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name VARCHAR(120) NOT NULL CHECK(length(btrim(name)) > 0),
+  store_user_id BIGINT REFERENCES store_users(id) ON DELETE SET NULL,
+  created_by_admin_id BIGINT REFERENCES admin_users(id) ON DELETE SET NULL,
+  customer_info JSONB NOT NULL DEFAULT '{}'::jsonb,
+  revision BIGINT NOT NULL DEFAULT 1 CHECK(revision > 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_order_customer_templates_customer ON order_customer_templates(store_user_id);
+CREATE INDEX IF NOT EXISTS idx_order_customer_templates_creator
+    ON order_customer_templates(created_by_admin_id,updated_at DESC,id DESC);
+
+CREATE TABLE IF NOT EXISTS product_categories (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  category_key VARCHAR(80) NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS product_category_translations (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  category_id BIGINT NOT NULL REFERENCES product_categories(id) ON DELETE CASCADE,
+  lang_code VARCHAR(8) NOT NULL CHECK (lang_code IN ('zh', 'en')),
+  label VARCHAR(255) NOT NULL,
+  UNIQUE (category_id, lang_code)
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  category_id BIGINT NOT NULL REFERENCES product_categories(id),
+  slug VARCHAR(160) NOT NULL UNIQUE,
+  sku VARCHAR(80) NOT NULL UNIQUE,
+  price NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
+  stock INTEGER NOT NULL DEFAULT 0,
+  featured BOOLEAN NOT NULL DEFAULT FALSE,
+  origin VARCHAR(255),
+  main_image_url TEXT NOT NULL,
+  size_chart_image_url TEXT,
+  description_image_url TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_products_category_id
+  ON products (category_id);
+
+CREATE INDEX IF NOT EXISTS idx_products_featured
+  ON products (featured);
+
+CREATE TABLE IF NOT EXISTS product_translations (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  lang_code VARCHAR(8) NOT NULL CHECK (lang_code IN ('zh', 'en')),
+  name VARCHAR(255) NOT NULL,
+  summary TEXT,
+  description TEXT,
+  UNIQUE (product_id, lang_code)
+);
+
+CREATE TABLE IF NOT EXISTS product_images (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  image_url TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_images_product_id
+  ON product_images (product_id);
+
+CREATE TABLE IF NOT EXISTS product_sizes (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  size_code VARCHAR(32) NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (product_id, size_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_sizes_product_id
+  ON product_sizes (product_id);
+
+CREATE TABLE IF NOT EXISTS product_size_prices (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  size_code VARCHAR(32) NOT NULL,
+  price NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
+  stock INTEGER NOT NULL DEFAULT 0,
+  contract_pending INTEGER NOT NULL DEFAULT 0 CHECK (contract_pending >= 0),
+  temporary_inbound INTEGER NOT NULL DEFAULT 0 CHECK (temporary_inbound >= 0),
+  defective_pending INTEGER NOT NULL DEFAULT 0 CHECK (defective_pending >= 0),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (product_id, size_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_size_prices_product_id
+  ON product_size_prices (product_id);
+
+
+CREATE TABLE IF NOT EXISTS banners (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  image_url TEXT NOT NULL,
+  cta_path VARCHAR(255) NOT NULL DEFAULT '/shop',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS banner_translations (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  banner_id BIGINT NOT NULL REFERENCES banners(id) ON DELETE CASCADE,
+  lang_code VARCHAR(8) NOT NULL CHECK (lang_code IN ('zh', 'en')),
+  title VARCHAR(255) NOT NULL,
+  subtitle TEXT,
+  cta_label VARCHAR(120),
+  UNIQUE (banner_id, lang_code)
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  order_no VARCHAR(40) NOT NULL UNIQUE,
+  store_user_id BIGINT NOT NULL REFERENCES store_users(id),
+  status VARCHAR(30) NOT NULL DEFAULT 'pending_payment'
+    CHECK (status IN ('pending_payment', 'paid', 'shipped', 'completed', 'cancelled')),
+  contact_name VARCHAR(120) NOT NULL,
+  phone VARCHAR(50) NOT NULL,
+  country VARCHAR(120),
+  shipping_address TEXT NOT NULL,
+  note TEXT,
+  total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
+  payment_link TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by_admin_id BIGINT REFERENCES admin_users(id),
+  owner_admin_id BIGINT REFERENCES admin_users(id),
+  order_source VARCHAR(20) NOT NULL DEFAULT 'store' CHECK(order_source IN ('store','backend'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_store_user_id
+  ON orders (store_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_orders_status
+  ON orders (status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_by_admin_id ON orders (created_by_admin_id);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  product_id BIGINT NOT NULL REFERENCES products(id),
+  product_name VARCHAR(255) NOT NULL,
+  sku VARCHAR(80) NOT NULL,
+  size_code VARCHAR(32),
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  unit_price NUMERIC(12, 2) NOT NULL CHECK (unit_price >= 0),
+  total_price NUMERIC(12, 2) NOT NULL CHECK (total_price >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_order_id
+  ON order_items (order_id);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_product_id
+  ON order_items (product_id);
+
+
+CREATE TABLE IF NOT EXISTS inventory_registration_logs (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  product_id BIGINT NOT NULL,
+  sku TEXT NOT NULL,
+  actor JSONB NOT NULL,
+  changes JSONB NOT NULL CHECK (jsonb_typeof(changes)='array'),
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+CREATE INDEX IF NOT EXISTS idx_inventory_registration_product_time
+  ON inventory_registration_logs (product_id, occurred_at DESC, id DESC);
+
+
+CREATE TABLE IF NOT EXISTS order_notification_state (
+  singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+  last_sequence BIGINT NOT NULL DEFAULT 0 CHECK (last_sequence >= 0)
+);
+INSERT INTO order_notification_state(singleton) VALUES(TRUE) ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS order_created_events (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  order_id BIGINT NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  publish_sequence BIGINT UNIQUE
+);
+CREATE INDEX IF NOT EXISTS idx_order_events_unpublished ON order_created_events(id)
+  WHERE publish_sequence IS NULL;
+CREATE INDEX IF NOT EXISTS idx_order_events_recorded ON order_created_events(recorded_at);
+CREATE TABLE IF NOT EXISTS order_notification_starts (
+  session_id BIGINT NOT NULL REFERENCES admin_sessions(id) ON DELETE CASCADE,
+  request_id UUID NOT NULL,
+  baseline BIGINT NOT NULL,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY(session_id, request_id)
+);
+CREATE OR REPLACE FUNCTION capture_order_created_notification() RETURNS trigger AS $$
+BEGIN
+  IF COALESCE(current_setting('gingtto.notifications_paused', true), '') IN ('on','true','1') THEN
+    RETURN NEW;
+  END IF;
+  INSERT INTO order_created_events(order_id) VALUES(NEW.id) ON CONFLICT(order_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='orders'::regclass
+                AND tgname='orders_created_notification' AND NOT tgisinternal) THEN
+    CREATE TRIGGER orders_created_notification AFTER INSERT ON orders
+      FOR EACH ROW EXECUTE FUNCTION capture_order_created_notification();
+  END IF;
+END $$;
+
+COMMIT;

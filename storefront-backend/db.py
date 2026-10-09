@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import catalog_order
 import inventory_policy
+import order_notification_schema
 import os
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -70,6 +71,8 @@ def _connect(dbname: str | None = None, *, autocommit: bool = False):
     }
     if DB_PASSWORD:
         kwargs["password"] = DB_PASSWORD
+    if os.environ.get("ORDER_NOTIFICATION_MAINTENANCE", "").lower() in {"1", "true", "on"}:
+        kwargs["options"] = "-c gingtto.notifications_paused=on"
     return connect(**kwargs)
 
 
@@ -273,6 +276,7 @@ def _apply_schema_migrations(cur: Any) -> None:
             """
         )
     inventory_policy.migrate(cur)
+    order_notification_schema.migrate(cur)
     cur.execute("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS size_code VARCHAR(32)")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS contact_email VARCHAR(190)")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS marketing_opt_in BOOLEAN NOT NULL DEFAULT FALSE")

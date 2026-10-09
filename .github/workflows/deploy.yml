@@ -26,6 +26,8 @@ jobs:
           --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Validate deployment script syntax
+        run: bash -n scripts/deploy-storefront.sh
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -36,7 +38,7 @@ jobs:
           PGDATABASE: gingtto_store_notifications_test
           PGUSER: postgres
           PGPASSWORD: fixture-only-password
-        run: pip install -r requirements.txt && python -m unittest -v test_order_notifications test_sales_ownership test_temporary_inbound
+        run: pip install -r requirements.txt && python -m unittest -v test_order_notifications test_sales_ownership test_temporary_inbound test_inventory_overdelivery && python ../scripts/verify-inventory-overdelivery.py storefront-backend
   deploy:
     needs: verify-notifications
     if: github.event_name != 'pull_request'

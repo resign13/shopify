@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import catalog_order
 import inventory_policy
+import inventory_overdelivery
 import order_notification_schema
 import os
 from contextlib import contextmanager
@@ -225,6 +226,9 @@ def _empty_bundle() -> dict[str, str]:
 def _apply_schema_migrations(cur: Any) -> None:
     import sales_ownership
     sales_ownership.migrate(cur)
+    # Match the admin's additive catalog schema on storefront-only new databases.
+    for column in ('product_code', 'color_group', 'color_name', 'color_hex'):
+        cur.execute(f"ALTER TABLE products ADD COLUMN IF NOT EXISTS {column} VARCHAR(160) NOT NULL DEFAULT ''")
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS size_chart_image_url TEXT")
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS description_image_url TEXT")
     cur.execute(
@@ -275,7 +279,15 @@ def _apply_schema_migrations(cur: Any) -> None:
               AND products.stock > 0
             """
         )
+    # Standalone/fresh storefront initialization must also accept the shared
+    # procurement ledger. Add zero-default stages only; never repartition data.
+    cur.execute('ALTER TABLE product_size_prices ADD COLUMN IF NOT EXISTS pending_inspection INTEGER NOT NULL DEFAULT 0 CHECK(pending_inspection >= 0)')
+    cur.execute('ALTER TABLE product_size_prices ADD COLUMN IF NOT EXISTS pending_inbound INTEGER NOT NULL DEFAULT 0')
+    cur.execute("SELECT 1 FROM pg_constraint WHERE conrelid='product_size_prices'::regclass AND conname='product_size_prices_inbound_nonnegative'")
+    if not cur.fetchone():
+        cur.execute('ALTER TABLE product_size_prices ADD CONSTRAINT product_size_prices_inbound_nonnegative CHECK(pending_inbound >= 0)')
     inventory_policy.migrate(cur)
+    inventory_overdelivery.migrate(cur)
     order_notification_schema.migrate(cur)
     cur.execute("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS size_code VARCHAR(32)")
     cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS contact_email VARCHAR(190)")

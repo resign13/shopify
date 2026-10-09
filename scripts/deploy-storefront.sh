@@ -75,6 +75,7 @@ trap rollback ERR
 rsync -a --exclude=.env --exclude='.env.*' --exclude=.venv --exclude=_vendor --exclude=uploads --exclude=data --exclude=__pycache__ "$stage/$backend/" "$root/$backend/"
 rsync -a "$stage/scripts/" "$root/scripts/"
 
+rsync -a "$stage/db/" "$root/db/"
 cd "$root/$backend"
 .venv/bin/python -m py_compile app.py db.py inventory_policy.py
 .venv/bin/pip install --disable-pip-version-check -q -r requirements.txt gunicorn

@@ -32,6 +32,8 @@ def load_env_file(path: Path) -> None:
 load_env_file(BASE_DIR / ".env")
 
 import inventory_policy
+import style_catalog
+import db as catalog_db
 
 from flask import Flask, g, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -62,8 +64,8 @@ F = TypeVar("F", bound=Callable[..., Any])
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = BASE_DIR / "uploads"
 SESSIONS_FILE = DATA_DIR / "sessions.json"
-SUPPORTED_LANGS = {"zh", "en"}
-DEFAULT_LANG = "zh"
+SUPPORTED_LANGS = {"zh", "en"}  # Stored bilingual records remain compatible.
+DEFAULT_LANG = "en"
 HOME_SECTION_KEYS = ("bestSeller", "newArrival", "specialPrice")
 
 
@@ -91,18 +93,30 @@ def build_upload_url(filename: str) -> str:
 
 
 def pick_language() -> str:
-    lang = request.args.get("lang", request.headers.get("X-Lang", DEFAULT_LANG))
-    return lang if lang in SUPPORTED_LANGS else DEFAULT_LANG
+    # The storefront is English-only, including old links that specify lang=zh.
+    return DEFAULT_LANG
 
 
 def localize(value: Any, lang: str) -> Any:
     if isinstance(value, dict) and SUPPORTED_LANGS & set(value.keys()):
-        return value.get(lang) or value.get(DEFAULT_LANG) or next(iter(value.values()))
+        return value.get(DEFAULT_LANG) or ""
     if isinstance(value, list):
         return [localize(item, lang) for item in value]
     if isinstance(value, dict):
         return {key: localize(item, lang) for key, item in value.items()}
     return value
+
+
+@app.after_request
+def english_system_messages(response):
+    """Guard the public error boundary without rewriting customer/product data."""
+    if response.status_code >= 400 and response.is_json:
+        payload = response.get_json(silent=True)
+        if isinstance(payload, dict) and re.search(r'[\u3400-\u9fff]', str(payload.get('message', ''))):
+            payload['message'] = ("The service is temporarily unavailable. Please try again later."
+                                  if response.status_code >= 500 else "Please check your input and try again.")
+            response.set_data(app.json.dumps(payload))
+    return response
 
 
 def sanitize_store_user(user: dict[str, Any]) -> dict[str, Any]:
@@ -119,7 +133,7 @@ def sanitize_store_user(user: dict[str, Any]) -> dict[str, Any]:
 def serialize_product(product: dict[str, Any], lang: str) -> dict[str, Any]:
     product = inventory_policy.public_inventory(product)
     category_label = product.get("categoryLabel") or product.get("categoryKey", "")
-    name = localize(product["name"], lang)
+    name = localize(product["name"], lang) or product.get("productCode") or product["sku"]
     summary = localize(product["summary"], lang)
     return {
         "id": product["id"],
@@ -203,9 +217,9 @@ def build_homepage_payload(lang: str) -> dict[str, Any]:
     ]
 
     stats = [
-        {"label": {"zh": "在线 SKU", "en": "Live SKUs"}[lang], "value": str(count_products())},
+        {"label": "Live SKUs", "value": str(count_products())},
         {
-            "label": {"zh": "现货库存", "en": "Units in stock"}[lang],
+            "label": "Units in stock",
             "value": str(count_units_in_stock()),
         },
     ]
@@ -312,7 +326,7 @@ def health() -> Any:
     try:
         verify_database_connection()
     except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc), "timestamp": utc_now()}), 500
+        return jsonify({"status": "error", "message": "Database is temporarily unavailable", "timestamp": utc_now()}), 500
     return jsonify({"status": "ok", "timestamp": utc_now()})
 
 
@@ -330,7 +344,7 @@ def store_login() -> Any:
     user = get_store_user_by_email(email, include_password_hash=True)
     password_ok = user is not None and check_password_hash(user["passwordHash"], password)
     if not user or user["status"] != "active" or not password_ok:
-        return jsonify({"message": "账号或密码错误"}), 401
+        return jsonify({"message": "Invalid account or password."}), 401
     token = create_session(user)
     return jsonify({"token": token, "user": sanitize_store_user(user)})
 
@@ -346,6 +360,45 @@ def auth_me() -> Any:
 def logout() -> Any:
     remove_session(g.current_token)
     return jsonify({"message": "ok"})
+
+
+@app.get('/api/catalog/categories')
+@require_auth
+def catalog_categories():
+    return jsonify({'items': list_category_labels(pick_language())})
+
+
+@app.get('/api/catalog/styles')
+@require_auth
+def catalog_styles():
+    try:
+        page, size = int(request.args.get('page', 1)), int(request.args.get('pageSize', 12))
+        if page < 1 or size not in {12,24,36}: raise ValueError()
+        section = request.args.get('section', 'shop')
+        if section not in {'shop','presale'}: raise ValueError()
+    except (TypeError,ValueError):
+        return jsonify({'message': 'Invalid catalog parameters'}), 400
+    # One snapshot includes config, identity, active variants, prices and size stocks.
+    with catalog_db._connect() as conn:
+        conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+        # A ContextVar-backed connection keeps this snapshot isolated from other requests.
+        token = catalog_db.CATALOG_CONNECTION.set(conn)
+        try:
+            variants = []
+            lang = pick_language()
+            for row in list_products():
+                variants.append({**serialize_product(row, lang), 'styleCode': row['styleCode'],
+                    'firstListedAt': row['firstListedAt'], 'firstProductId': row['firstProductId']})
+            items = style_catalog.group_variants(variants)
+            if section == 'presale':
+                settings = style_catalog.config(catalog_db._fetch_one('SELECT * FROM presale_configs WHERE id=1'))
+                items = style_catalog.presale_groups(items, settings)
+            items = style_catalog.filter_groups(items, keyword=request.args.get('keyword',''),
+                category=request.args.get('category',''), stock_only=request.args.get('stockOnly') in {'1','true'})
+            total = len(items)
+            return jsonify({'items': items[(page-1)*size:page*size], 'total': total, 'page': page, 'pageSize': size})
+        finally:
+            catalog_db.CATALOG_CONNECTION.reset(token)
 
 
 @app.get("/api/products")
@@ -517,6 +570,8 @@ def cancel_store_order(order_id: int) -> Any:
         return jsonify({"message": str(exc)}), 404
     except RuntimeError as exc:
         return jsonify({"message": str(exc)}), 400
+    except ValueError:
+        return jsonify({"message": "This order could not be cancelled. Please contact your sales representative."}), 400
     return jsonify({"message": "Order cancelled successfully", "order": order})
 
 

@@ -38,7 +38,15 @@ jobs:
           PGDATABASE: gingtto_store_notifications_test
           PGUSER: postgres
           PGPASSWORD: fixture-only-password
-        run: pip install -r requirements.txt && python -m unittest -v test_order_notifications test_sales_ownership test_temporary_inbound test_inventory_overdelivery test_product_weights && python ../scripts/verify-inventory-overdelivery.py storefront-backend && python ../scripts/verify-product-weights.py storefront-backend
+        run: pip install -r requirements.txt && python -m unittest -v test_order_notifications test_sales_ownership test_temporary_inbound test_inventory_overdelivery test_product_weights test_style_catalog test_storefront_english && python ../scripts/verify-inventory-overdelivery.py storefront-backend && python ../scripts/verify-product-weights.py storefront-backend && python ../scripts/verify-style-catalog.py storefront-backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Verify English storefront and build
+        working-directory: frontend
+        run: npm ci && node --test src/storefront/utils/*.test.js src/storefront/stores/*.test.js src/storefront/views/*.test.js && npm run build
   deploy:
     needs: verify-notifications
     if: github.event_name != 'pull_request'
@@ -59,7 +67,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Build frontend
         working-directory: frontend
-        run: npm ci && node --test src/storefront/stores/catalog.test.js src/storefront/utils/catalogOrder.test.js src/storefront/utils/inventoryOrder.test.js src/storefront/utils/navigation.test.js src/storefront/utils/sizeOrder.test.js src/storefront/views/InventoryView.test.js src/storefront/views/ProductDetailView.test.js && npm run build
+        run: npm ci && node --test src/storefront/utils/*.test.js src/storefront/stores/*.test.js src/storefront/views/*.test.js && npm run build
       - name: Package release without runtime data or secrets
         run: |
           tar --exclude=.env --exclude='.env.*' --exclude=.venv --exclude=_vendor --exclude=uploads --exclude=data --exclude=__pycache__ -czf release.tar.gz storefront-backend scripts frontend/dist db

@@ -4,6 +4,7 @@ import json
 import catalog_order
 import inventory_policy
 import inventory_overdelivery
+import product_weights
 import order_notification_schema
 import os
 from contextlib import contextmanager
@@ -246,6 +247,7 @@ def _apply_schema_migrations(cur: Any) -> None:
     )
     cur.execute("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='product_size_prices' AND column_name='stock') AS present")
     had_size_stock = cur.fetchone()['present']
+    product_weights.migrate(cur)
     cur.execute("ALTER TABLE product_size_prices ADD COLUMN IF NOT EXISTS stock INTEGER NOT NULL DEFAULT 0")
     cur.execute("ALTER TABLE product_size_prices ADD COLUMN IF NOT EXISTS contract_pending INTEGER NOT NULL DEFAULT 0")
     cur.execute("ALTER TABLE product_size_prices DROP CONSTRAINT IF EXISTS product_size_prices_contract_pending_check")

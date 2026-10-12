@@ -1,244 +1,67 @@
 <template>
-  <section class="shop-page">
-    <div class="container">
-      <section class="shop-filter-row shop-filter-row-search">
-        <form class="shop-search-bar" @submit.prevent="submitSearch">
-          <input
-            v-model="searchDraft"
-            class="field shop-search-input"
-            type="search"
-            :placeholder="locale.t('common.search')"
-          />
-          <button class="primary-button shop-search-button" type="submit">
-            {{ locale.t('nav.search') }}
-          </button>
-          <button
-            v-if="searchDraft || keyword"
-            class="secondary-button shop-clear-button"
-            type="button"
-            @click="clearSearch"
-          >
-            {{ locale.t('common.back') }}
-          </button>
-        </form>
-      </section>
-
-      <section class="shop-filter-row">
-        <label class="shop-stock-toggle">
-          <input v-model="stockOnly" type="checkbox" />
-          <span>{{ locale.t('common.stockOnly') }}</span>
-        </label>
-
-        <label class="shop-sort-box">
-          <span>Sort By</span>
-          <select v-model="sortOrder">
-            <option value="category">Category Order</option>
-            <option value="newest">Newest</option>
-            <option value="price-desc">Price: High to Low</option>
-            <option value="price-asc">Price: Low to High</option>
-          </select>
-        </label>
-      </section>
-
-      <div v-if="catalog.loading" class="shop-product-grid skeleton-grid">
-        <article
-          v-for="item in productSkeletons"
-          :key="item"
-          class="product-card skeleton-product-card"
-        >
-          <div class="product-card-media skeleton-media"></div>
-          <div class="product-card-copy skeleton-product-copy">
-            <span class="skeleton-line skeleton-line-lg"></span>
-            <span class="skeleton-line skeleton-line-sm"></span>
-            <span class="skeleton-line skeleton-line-xs"></span>
-          </div>
-        </article>
-      </div>
-
-      <template v-else>
-        <div v-if="sortedProducts.length" class="shop-results-head">
-          <p>{{ paginationLabels.itemLabelDisplay }} {{ sortedProducts.length }}</p>
-        </div>
-
-        <div v-if="paginatedProducts.length" class="shop-product-grid">
-          <ProductCard
-            v-for="product in paginatedProducts"
-            :key="product.id"
-            :product="product"
-          />
-        </div>
-
-        <StorefrontPagination
-          v-if="sortedProducts.length"
-          :page="currentPage"
-          :page-size="pageSize"
-          :size-options="[20, 40, 60]"
-          :total-items="sortedProducts.length"
-          :labels="paginationLabels"
-          @update:page="currentPage = $event"
-          @update:page-size="pageSize = $event"
-        />
-
-        <div v-else class="panel-card shop-empty-state">
-          <h3>{{ locale.t('nav.search') }}</h3>
-          <p>{{ locale.t('common.search') }}</p>
-        </div>
-      </template>
-    </div>
-  </section>
+  <section class="catalog-page"><div class="container">
+    <header class="catalog-title"><div><p class="eyebrow">GINGTTO / {{ presale ? 'PRE-SALE' : 'CATALOG' }}</p><h1>{{ presale ? 'Pre-sale Selection' : 'Product Catalog' }}</h1>
+      <p>{{ presale ? 'A curated selection of styles. Orders remain subject to available stock.' : 'Explore every color. Choose a style to order by size.' }}</p></div><span>{{ total }} styles</span></header>
+    <form class="catalog-filters" @submit.prevent="apply">
+      <input v-model="draft.keyword" class="field" type="search" placeholder="Search style, product, color or SKU" aria-label="Search catalog" />
+      <select v-model="draft.category" class="field" aria-label="Category"><option value="">All categories</option><option v-for="c in catalog.categories" :key="c.key" :value="c.key">{{ c.label }}</option></select>
+      <label><input v-model="draft.stockOnly" type="checkbox" /> In stock only</label>
+      <button class="primary-button" type="submit" :disabled="loading">Search</button><button class="secondary-button" type="button" @click="reset">Reset</button>
+    </form>
+    <div v-if="error" class="catalog-message" role="alert"><p>{{ error }}</p><button class="secondary-button" @click="load">Retry</button></div>
+    <div v-else-if="loading" class="catalog-loading" aria-live="polite">Loading catalog…</div>
+    <template v-else>
+      <StyleCatalogGroup v-for="group in groups" :key="group.styleCode" :group="group" />
+      <div v-if="!groups.length" class="catalog-message">{{ presale ? 'No pre-sale styles match this selection.' : 'No styles match this selection.' }}</div>
+      <StorefrontPagination :page="page" :page-size="pageSize" :total-items="total" :labels="labels" @update:page="changePage" @update:page-size="changeSize" />
+    </template>
+  </div></section>
 </template>
-
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { compareProductCategories } from '../utils/catalogOrder'
-
-import ProductCard from '../components/ProductCard.vue'
-import StorefrontPagination from '../components/StorefrontPagination.vue'
+import { request } from '../api'
 import { useCatalogStore } from '../stores/catalog'
 import { useLocaleStore } from '../stores/locale'
-
-const route = useRoute()
-const router = useRouter()
-const catalog = useCatalogStore()
-const locale = useLocaleStore()
-
-const category = ref(route.query.category?.toString() || '')
-const keyword = ref(route.query.keyword?.toString() || '')
-const searchDraft = ref(route.query.keyword?.toString() || '')
-const stockOnly = ref(false)
-const sortOrder = ref('category')
-const currentPage = ref(1)
-const pageSize = ref(20)
-const productSkeletons = [1, 2, 3, 4, 5, 6, 7, 8]
-
-const paginationLabels = computed(() => ({
-  prev: 'Prev',
-  next: 'Next',
-  of: 'of',
-  perPage: 'Per page',
-  itemLabel: 'products',
-  itemLabelDisplay: 'Products',
-}))
-
-const sortedProducts = computed(() => {
-  const normalizedKeyword = keyword.value.trim().toLowerCase()
-  const items = (catalog.products || []).filter((item) => {
-    if (stockOnly.value && Number(item.stock || 0) < 1) return false
-    if (category.value && item.categoryKey !== category.value) return false
-
-    if (normalizedKeyword) {
-      const haystack = [
-        item.name,
-        item.summary,
-        item.productCode,
-        item.sku,
-        item.colorName,
-        item.categoryLabel,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      if (!haystack.includes(normalizedKeyword)) return false
-    }
-
-    return true
-  })
-
-  if (sortOrder.value === 'newest' || sortOrder.value === 'category') {
-    return [...items].sort((a, b) => {
-      const categoryDifference = compareProductCategories(a, b)
-      if (categoryDifference) return categoryDifference
-      const aTime = Date.parse(a.createdAt || a.updatedAt || '') || 0
-      const bTime = Date.parse(b.createdAt || b.updatedAt || '') || 0
-      if (bTime !== aTime) return bTime - aTime
-      return Number(b.id || 0) - Number(a.id || 0)
-    })
-  }
-
-  if (sortOrder.value === 'price-asc') {
-    return [...items].sort((a, b) => compareProductCategories(a, b) || Number(a.price || 0) - Number(b.price || 0))
-  }
-
-  if (sortOrder.value === 'price-desc') {
-    return [...items].sort((a, b) => compareProductCategories(a, b) || Number(b.price || 0) - Number(a.price || 0))
-  }
-
-  return [...items].sort(compareProductCategories)
-})
-
-const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return sortedProducts.value.slice(start, start + pageSize.value)
-})
-
-function buildQuery() {
-  const query = {}
-  if (category.value) query.category = category.value
-  if (keyword.value) query.keyword = keyword.value
-  return query
+import StyleCatalogGroup from '../components/StyleCatalogGroup.vue'
+import StorefrontPagination from '../components/StorefrontPagination.vue'
+const route=useRoute(), router=useRouter(), catalog=useCatalogStore(), locale=useLocaleStore()
+const presale=computed(()=>route.path==='/presale')
+const groups=ref([]), total=ref(0), loading=ref(true), error=ref(''), page=ref(1), pageSize=ref(12)
+const draft=reactive({keyword:'',category:'',stockOnly:false})
+const labels={prev:'Prev',next:'Next',of:'of',perPage:'Styles per page',itemLabel:'styles'}
+let controller, revision=0
+async function load(){
+  const current=++revision; controller?.abort(); controller=new AbortController(); loading.value=true; error.value=''
+  const params=new URLSearchParams({lang:locale.current,section:presale.value?'presale':'shop',page:String(page.value),pageSize:String(pageSize.value)})
+  for(const key of ['keyword','category','stockOnly']) if(route.query[key]) params.set(key,String(route.query[key]))
+  try{
+    const [data]=await Promise.all([request(`/api/catalog/styles?${params}`,{headers:catalog.authHeaders(),signal:controller.signal}),catalog.loadCategories(locale.current)])
+    if(current!==revision)return
+    total.value=data.total; groups.value=data.items
+    const last=Math.max(1,Math.ceil(total.value/pageSize.value))
+    if(page.value>last){changePage(last);return}
+  }catch(e){if(current===revision && e.name!=='AbortError')error.value=e.message || 'Catalog load failed'}
+  finally{if(current===revision)loading.value=false}
 }
-
-async function loadList() {
-  await catalog.loadProducts(
-    { category: category.value, keyword: keyword.value },
-    locale.current
-  )
+function apply(){
+ const query={pageSize:pageSize.value}
+ if(draft.keyword.trim())query.keyword=draft.keyword.trim()
+ if(draft.category)query.category=draft.category
+ if(draft.stockOnly)query.stockOnly='1'
+ router.replace({path:route.path,query})
 }
-
-function submitSearch() {
-  keyword.value = searchDraft.value.trim()
-  router.replace({ path: route.path, query: buildQuery() })
-}
-
-function clearSearch() {
-  searchDraft.value = ''
-  keyword.value = ''
-  router.replace({ path: route.path, query: buildQuery() })
-}
-
-watch(() => locale.current, loadList)
-
-watch([stockOnly, sortOrder, pageSize], () => {
-  currentPage.value = 1
-})
-
-watch(
-  () => [route.query.category, route.query.keyword],
-  ([nextCategory, nextKeyword]) => {
-    category.value = nextCategory?.toString() || ''
-    keyword.value = nextKeyword?.toString() || ''
-    searchDraft.value = keyword.value
-    currentPage.value = 1
-    loadList()
-  }
-)
-
-watch(
-  () => sortedProducts.value.length,
-  (count) => {
-    const totalPages = Math.max(1, Math.ceil(count / pageSize.value))
-    if (currentPage.value > totalPages) {
-      currentPage.value = totalPages
-    }
-  },
-  { immediate: true }
-)
-
-onMounted(() => {
-  loadList()
-})
+function reset(){Object.assign(draft,{keyword:'',category:'',stockOnly:false});apply()}
+function changePage(value){router.replace({path:route.path,query:{...route.query,page:value}})}
+function changeSize(value){router.replace({path:route.path,query:{...route.query,page:1,pageSize:value}})}
+watch(()=>[route.path,route.query,locale.current],()=>{
+  Object.assign(draft,{keyword:String(route.query.keyword||''),category:String(route.query.category||''),stockOnly:['1','true'].includes(String(route.query.stockOnly||''))})
+  page.value=Math.max(1,Number.parseInt(route.query.page,10)||1)
+  const size=Number(route.query.pageSize);pageSize.value=[12,24,36].includes(size)?size:12
+  load()
+},{immediate:true})
+onBeforeUnmount(()=>{revision++;controller?.abort()})
 </script>
-
 <style scoped>
-.shop-results-head {
-  margin: 18px 0 0;
-}
-
-.shop-results-head p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.96rem;
-}
+.catalog-page{padding:36px 0 56px;background:#fff;min-height:65vh}.catalog-title{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:24px}.catalog-title h1{font-size:28px;margin:6px 0 10px;color:#202b38}.catalog-title p,.catalog-title>span{font-size:13px;color:#748295}.catalog-title .eyebrow{letter-spacing:2px;font-size:10px}.catalog-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-top:1px solid #e4e8ec;border-bottom:1px solid #e4e8ec;padding:18px 0;margin-bottom:32px}.catalog-filters input[type=search]{flex:1;min-width:220px}.catalog-filters select{width:180px}.catalog-filters label{display:flex;align-items:center;gap:8px;font-size:13px;color:#64748b;white-space:nowrap}.catalog-filters input[type=checkbox]{width:18px;height:18px;accent-color:#202b38}.catalog-message,.catalog-loading{padding:60px 24px;text-align:center;background:#f7f8fa;color:#64748b;margin-bottom:24px}.catalog-message button{margin-top:12px}@media(max-width:640px){.catalog-page{padding:20px 0 32px}.catalog-title h1{font-size:23px}.catalog-title{align-items:start}.catalog-filters{gap:10px}.catalog-filters input[type=search]{flex-basis:100%}.catalog-filters select{flex:1;min-width:120px}.catalog-filters button{padding:10px 16px}}
 </style>

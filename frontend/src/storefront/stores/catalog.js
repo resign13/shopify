@@ -85,6 +85,10 @@ export const useCatalogStore = defineStore('catalog', {
           }
         : {}
     },
+    async loadCategories(lang = 'en') {
+      const data = await request(`/api/catalog/categories?lang=${encodeURIComponent(lang)}`, {headers: this.authHeaders()})
+      this.categories = (data.items || []).map(normalizeCategoryLabel)
+    },
     async loadHome(lang) {
       this.loading = true
       this.error = ''

@@ -38,6 +38,7 @@
         <RouterLink class="nav-link-button" to="/inventory">
           {{ navCopy.inventory }}
         </RouterLink>
+        <RouterLink class="nav-link-button" to="/presale">PRE-SALE</RouterLink>
       </nav>
       <div v-else class="header-spacer"></div>
 
@@ -121,7 +122,7 @@ const dropdownSections = computed(() => [
 async function ensureCategoriesLoaded() {
   if (!auth.isAuthenticated) return
   if ((catalog.categories || []).length) return
-  await catalog.loadHome('en')
+  try { await catalog.loadCategories('en') } catch { /* Page exposes a retryable load error. */ }
 }
 
 onMounted(() => {

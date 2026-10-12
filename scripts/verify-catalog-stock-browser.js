@@ -1,0 +1,30 @@
+async (page) => {
+  if (!page.url().startsWith('http://127.0.0.1:5371/')) throw new Error('Isolated *_test fixture required');
+  let checks=0;
+  const check=(condition,message)=>{if(!condition)throw new Error(message);checks++};
+  await page.setViewportSize({width:1600,height:1000});
+  await page.getByRole('textbox',{name:'Email'}).fill('buyer@gingtto.test');
+  await page.getByRole('textbox',{name:'Password'}).fill('Fixture-Only');
+  await page.getByRole('button',{name:'Login to Continue'}).click();
+  await page.waitForURL('**/shop');
+  const first=page.locator('.style-group').first();
+  await first.waitFor();
+  check((await first.locator('h2').innerText()).includes('CAT-13'),'Newest fixture style missing');
+  check(await first.locator('.style-stock').innerText()==='Total stock: 11 pcs','Style available stock incorrect');
+  const cards=first.locator('.color-card');
+  check(await cards.nth(0).locator('.color-stock').innerText()==='Stock: 0 pcs','Shortage should display zero');
+  check(await cards.nth(1).locator('.color-stock').innerText()==='Stock: 11 pcs','Color stock incorrect');
+  check(!(await first.locator('.style-heading p').innerText()).includes('Catalog fixture style'),'Repeated title still shown');
+  check((await page.locator('.style-group').nth(1).locator('.style-heading p').innerText()).includes('100% Cotton'),'Useful product summary removed');
+  check(!/-\d+ pcs/.test(await first.innerText()),'Negative stock leaked');
+  await page.screenshot({path:'output/playwright/catalog-stock-desktop.png',fullPage:false});
+  await page.setViewportSize({width:390,height:844});
+  check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Mobile horizontal overflow');
+  check(await first.locator('.style-stock').isVisible(),'Mobile style stock missing');
+  await page.screenshot({path:'output/playwright/catalog-stock-mobile.png',fullPage:true});
+  await page.goto('http://127.0.0.1:5371/presale');
+  await first.waitFor();
+  check(await first.locator('.style-stock').innerText()==='Total stock: 11 pcs','Presale stock missing');
+  check(await first.locator('.color-stock').first().innerText()==='Stock: 0 pcs','Presale shortage not zero');
+  return {checks,availableStock:true,shortagesZero:true,repeatedSummaryRemoved:true,materialSummaryPreserved:true,mobile:true,presale:true};
+}

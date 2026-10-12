@@ -16,24 +16,24 @@ function makeRouter(authenticated) {
   return router
 }
 
-test('inventory is the default; removed pages and old anchors do not render or leave broken links', async () => {
-  assert.deepEqual(storefrontNavigation.map(item => item.to), ['/shop', '/inventory'])
-  assert.equal(defaultStorefrontPath, '/inventory')
+test('catalog is the default; removed pages and old anchors do not render or leave broken links', async () => {
+  assert.deepEqual(storefrontNavigation.map(item => item.to), ['/shop', '/presale', '/inventory'])
+  assert.equal(defaultStorefrontPath, '/shop')
   const router = makeRouter(true)
   for (const path of ['/', '/login', '/home', '/home#about', '/home#contact', '/collections/best-seller', '/collections/new-arrival', '/collections/special-price', '/pages/about-us', '/pages/contact', '/pages/privacy-policy', '/unknown?old=1#old']) {
     await router.push(path)
-    assert.equal(router.currentRoute.value.fullPath, '/inventory', path)
+    assert.equal(router.currentRoute.value.fullPath, '/shop', path)
   }
 })
 
 test('guest access stays protected; shopping, cart, account and order utilities remain available', async () => {
   const guest = makeRouter(false)
-  for (const path of ['/', '/home', '/shop', '/inventory', '/product/example', '/checkout', '/account', '/orders', '/pages/contact']) {
+  for (const path of ['/', '/home', '/shop', '/presale', '/inventory', '/product/example', '/checkout', '/account', '/orders', '/pages/contact']) {
     await guest.push(path)
     assert.equal(guest.currentRoute.value.path, '/login', path)
   }
   const member = makeRouter(true)
-  for (const path of ['/shop?category=denim', '/inventory', '/product/example', '/checkout', '/account', '/orders']) {
+  for (const path of ['/shop?category=denim', '/presale', '/inventory', '/product/example', '/checkout', '/account', '/orders']) {
     await member.push(path)
     assert.equal(member.currentRoute.value.fullPath, path)
   }

@@ -2561,3 +2561,6 @@ textarea {
 .footer-link-list a:hover {
   color: #ffffff;
 }
+
+.account-order-main > div { min-width: 0; max-width: 100%; }
+.account-order-main strong { overflow-wrap: anywhere; }

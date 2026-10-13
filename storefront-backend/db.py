@@ -8,6 +8,8 @@ import inventory_overdelivery
 import style_catalog
 import product_weights
 import order_notification_schema
+import order_numbering
+import secrets
 import os
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -235,6 +237,7 @@ def _empty_bundle() -> dict[str, str]:
 
 
 def _apply_schema_migrations(cur: Any) -> None:
+    order_numbering.migrate(cur)
     import sales_ownership
     sales_ownership.migrate(cur)
     # Match the admin's additive catalog schema on storefront-only new databases.
@@ -1087,10 +1090,10 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                 VALUES (
                   %s, %s, %s, 'pending_payment', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
                 )
-                RETURNING id
+                RETURNING id, created_at, contact_name
                 """,
                 (
-                    f"TEMP-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
+                    f"TEMP-{secrets.token_hex(16)}",
                     payload["userId"],
                     user["linked_admin_user_id"],
                     payload["contactName"],
@@ -1112,8 +1115,9 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                     payload.get("zip", ""),
                 ),
             )
-            order_id = int(cur.fetchone()["id"])
-            cur.execute("UPDATE orders SET order_no = %s WHERE id = %s", (f"LM-{order_id:06d}", order_id))
+            record = cur.fetchone()
+            order_id = int(record["id"])
+            cur.execute("UPDATE orders SET order_no = %s WHERE id = %s", (order_numbering.make_order_number(order_id, record['created_at'], record['contact_name']), order_id))
 
             for item in prepared_items:
                 cur.execute(

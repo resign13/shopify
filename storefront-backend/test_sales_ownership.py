@@ -1,5 +1,6 @@
 """Store checkout attribution contract, without a running database or secrets."""
 import unittest
+from datetime import datetime, timezone
 from contextlib import contextmanager
 from unittest.mock import patch
 
@@ -12,7 +13,7 @@ class Cursor:
         self.rows = iter([
             {'id': 1, 'status': 'active', 'linked_admin_user_id': owner},
             {'id': 7, 'sku': 'FIXTURE', 'price': 12, 'stock': 8, 'name': 'Fixture'},
-            {'exists': 1}, {'price': 12, 'stock': 8}, {'id': 41},
+            {'exists': 1}, {'price': 12, 'stock': 8}, {'id': 41, 'created_at': datetime(2026,10,12,16,tzinfo=timezone.utc), 'contact_name': 'Fixture'},
         ])
 
     def execute(self, query, params=()):
@@ -48,6 +49,8 @@ class StoreSalesOwnershipTest(unittest.TestCase):
                                               'contactName': 'Fixture', 'phone': '123', 'shippingAddress': 'Fixture',
                                               'items': [{'productId': 7, 'sizeCode': 'M', 'quantity': 2}]})
                 self.assertEqual(result, {'id': 41})
+                number = next(call for call in cursor.calls if 'UPDATE orders SET order_no' in call[0])
+                self.assertEqual(number[1], ('PO1013-Fixture-000041',41))
                 self.assertIn('FOR SHARE', cursor.calls[0][0])
                 insert = next(call for call in cursor.calls if 'INSERT INTO orders (' in call[0])
                 self.assertIn('owner_admin_id', insert[0])

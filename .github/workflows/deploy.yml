@@ -38,7 +38,7 @@ jobs:
           PGDATABASE: gingtto_store_notifications_test
           PGUSER: postgres
           PGPASSWORD: fixture-only-password
-        run: pip install -r requirements.txt && python -m unittest -v test_order_notifications test_sales_ownership test_temporary_inbound test_inventory_overdelivery test_product_weights test_style_catalog test_storefront_english && python ../scripts/verify-inventory-overdelivery.py storefront-backend && python ../scripts/verify-product-weights.py storefront-backend && python ../scripts/verify-style-catalog.py storefront-backend
+        run: pip install -r requirements.txt && python -m unittest -v test_order_notifications test_order_numbering test_sales_ownership test_temporary_inbound test_inventory_overdelivery test_product_weights test_style_catalog test_storefront_english && python ../scripts/verify-inventory-overdelivery.py storefront-backend && python ../scripts/verify-product-weights.py storefront-backend && python ../scripts/verify-style-catalog.py storefront-backend
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

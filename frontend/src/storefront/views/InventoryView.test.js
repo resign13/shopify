@@ -53,6 +53,10 @@ test('inventory renders category then natural SKU order before pagination, prese
     assert.deepEqual(skus(html), tracksuits.slice(0, 20).map((p) => p.productCode))
     assert.equal([...html.matchAll(/class="inventory-total"[^>]*>10<\/td>/g)].length, 20)
     assert.match(html, /<strong[^>]*>280<\/strong>/)
+    assert.match(html, /Export PDF/)
+    assert.match(html, /across all pages/)
+    assert.match(html, /multiple style codes: ZM4757,CS5101/)
+    assert.doesNotMatch(html, /weightGrams|defectivePending/)
     assert.doesNotMatch(html, />-10</)
 
     // Editing category order must update the rows rather than retain API order.

@@ -116,6 +116,7 @@ for attempt in $(seq 1 20); do
     .venv/bin/python "$root/scripts/verify-defective-inventory.py" "$backend"
     .venv/bin/python "$root/scripts/verify-inventory-overdelivery.py" "$backend"
     .venv/bin/python "$root/scripts/verify-product-weights.py" "$backend"
+    .venv/bin/python "$root/scripts/verify-order-numbering.py" "$backend"
     .venv/bin/python "$root/scripts/verify-sales-access.py" "$backend"
     stock_snapshot > "$backup/inventory-after.json"
     echo "Inventory before release: $(cat "$backup/inventory-before.json")"

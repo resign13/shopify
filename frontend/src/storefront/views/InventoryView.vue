@@ -1,6 +1,13 @@
 <template>
   <section class="inventory-page">
     <div class="container">
+      <div class="inventory-export-toolbar">
+        <span>Export current search and category results across all pages. No filters = all products.</span>
+        <button type="button" class="inventory-export-button" :disabled="exporting || catalog.loading" :aria-busy="exporting" @click="downloadInventoryPdf">
+          {{ exporting ? exportProgress : 'Export PDF' }}
+        </button>
+      </div>
+      <p v-if="exportMessage" class="inventory-export-message" :class="{ 'is-error': exportError }" :role="exportError ? 'alert' : 'status'">{{ exportMessage }}</p>
       <section class="inventory-toolbar">
         <label class="inventory-field">
           <span>Category</span>
@@ -17,8 +24,10 @@
           <input
             v-model="keyword"
             type="search"
-            placeholder="Search product title, SKU, color or category"
+            placeholder="Search title, SKU or color; multiple style codes: ZM4757,CS5101"
+            aria-describedby="inventory-search-help"
           />
+          <small id="inventory-search-help">Separate multiple style codes with commas. Matches any code.</small>
         </label>
       </section>
 
@@ -112,14 +121,17 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import LazyImage from '../components/LazyImage.vue'
 import StorefrontPagination from '../components/StorefrontPagination.vue'
 import { useCatalogStore } from '../stores/catalog'
 import { useLocaleStore } from '../stores/locale'
-import { inventorySku, sortInventoryProducts } from '../utils/inventoryOrder'
+import { inventorySnapshot, filterInventorySnapshot } from '../utils/inventoryData.js'
+import { request } from '../api'
+import { useAuthStore } from '../stores/auth'
+import { applyProductsImageOverrides } from '../imageOverrides'
 
 const catalog = useCatalogStore()
 const locale = useLocaleStore()
@@ -129,21 +141,16 @@ const keyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
 
-const sizeColumns = [
-  { key: 'S', label: 'S/28', aliases: ['S', '28'] },
-  { key: 'M', label: 'M/30', aliases: ['M', '30'] },
-  { key: 'L', label: 'L/32', aliases: ['L', '32'] },
-  { key: 'XL', label: 'XL/34', aliases: ['XL', '34'] },
-  { key: 'XXL', label: 'XXL/36', aliases: ['XXL', '2XL', '36'] },
-  { key: 'XXXL', label: 'XXXL/38', aliases: ['XXXL', '3XL', '38'] },
-]
+const auth = useAuthStore()
+const exporting = ref(false)
+const exportProgress = ref('Preparing PDF...')
+const exportMessage = ref('')
+const exportError = ref(false)
+let exportController = null
 
-const aliasToColumn = sizeColumns.reduce((map, column) => {
-  column.aliases.forEach((alias) => {
-    map[String(alias).toUpperCase()] = column.key
-  })
-  return map
-}, {})
+const snapshot = computed(() => inventorySnapshot(catalog.products || [], categoryOptions.value))
+const filteredSnapshot = computed(() => filterInventorySnapshot(snapshot.value, { keyword: keyword.value, categoryKey: categoryFilter.value }))
+const sizeColumns = computed(() => filteredSnapshot.value.columns)
 
 const paginationLabels = {
   prev: 'Prev',
@@ -155,94 +162,65 @@ const paginationLabels = {
 
 const categoryOptions = computed(() => catalog.categories || [])
 
-const inventoryRows = computed(() =>
-  sortInventoryProducts(catalog.products || [], categoryOptions.value).map((product) => {
-    const sizeStocks = sizeColumns.reduce((result, column) => {
-      result[column.key] = 0
-      return result
-    }, {})
-
-    ;(product.sizePrices || []).forEach((item) => {
-      const normalized = normalizeSizeCode(item.sizeCode)
-      const key = aliasToColumn[normalized]
-      if (key) {
-        sizeStocks[key] += Math.max(0, Number(item.stock || 0))
-      }
-    })
-
-    const summedStock = (product.sizePrices || []).reduce((sum, item) => sum + Math.max(0, Number(item.stock || 0)), 0)
-    const totalStock = (product.sizePrices || []).length ? summedStock : Math.max(0, Number(product.stock || 0))
-
-    return {
-      id: product.id,
-      slug: product.slug,
-      name: product.name || product.productCode || product.sku || 'Untitled Product',
-      colorSku: inventorySku(product) || '—',
-      image: product.image || '',
-      colorName: product.colorName || '',
-      categoryKey: product.categoryKey || '',
-      categoryLabel: englishCategoryLabel(product),
-      sizeStocks,
-      totalStock,
-      searchText: [
-        product.name,
-        product.productCode,
-        product.sku,
-        product.colorName,
-        product.categoryKey,
-        englishCategoryLabel(product),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase(),
-    }
-  })
-)
-
-const filteredRows = computed(() => {
-  const normalizedKeyword = keyword.value.trim().toLowerCase()
-  return inventoryRows.value.filter((row) => {
-    if (categoryFilter.value && row.categoryKey !== categoryFilter.value) return false
-    if (normalizedKeyword && !row.searchText.includes(normalizedKeyword)) return false
-    return true
-  })
-})
+const filteredRows = computed(() => filteredSnapshot.value.rows)
 
 const paginatedRows = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   return filteredRows.value.slice(start, start + pageSize.value)
 })
 
-const totalStock = computed(() =>
-  filteredRows.value.reduce((sum, row) => sum + Number(row.totalStock || 0), 0)
-)
+const totalStock = computed(() => filteredSnapshot.value.totalStock)
 
-function normalizeSizeCode(value) {
-  const raw = String(value || '').trim().toUpperCase().replace(/\s+/g, '')
-  if (!raw) return ''
-  const parts = raw.split(/[^A-Z0-9]+/).filter(Boolean)
-  const candidates = [raw, ...parts]
-  return candidates.find((item) => aliasToColumn[item]) || raw
+async function downloadInventoryPdf() {
+  if (exporting.value || !auth.isAuthenticated) return
+  const controller = new AbortController()
+  // Lock the chosen scope at click time even if the input changes during export.
+  const filters = { keyword: keyword.value, categoryKey: categoryFilter.value }
+  const categories = categoryOptions.value.map(category => ({ ...category }))
+  exportController = controller
+  exporting.value = true
+  exportProgress.value = 'Preparing PDF...'
+  exportMessage.value = ''
+  exportError.value = false
+  try {
+    // A fresh, single products response supplies the complete stock snapshot;
+    // never export stale cached state after a failed request or slice by page.
+    const raw = await request('/api/products?lang=en', {
+      headers: catalog.authHeaders(), signal: controller.signal,
+    })
+    if (!Array.isArray(raw.items)) throw new Error('Inventory response is incomplete. Please try again.')
+    const data = applyProductsImageOverrides(raw)
+    const selected = filterInventorySnapshot(inventorySnapshot(data.items, categories), filters)
+    const { exportInventoryPdf } = await import('../utils/inventoryPdf.js')
+    const result = await exportInventoryPdf(selected, {
+      signal: controller.signal,
+      onProgress: (page, total) => { exportProgress.value = `Exporting ${page}/${total}...` },
+    })
+    exportMessage.value = `PDF downloaded: ${result.rowCount} color SKUs, ${result.pageCount} pages.`
+    if (result.missingImages) exportMessage.value += ` ${result.missingImages} product images could not be loaded; stock data is included.`
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      exportError.value = true
+      exportMessage.value = error.message || 'PDF export failed. Please try again.'
+    }
+  } finally {
+    if (exportController === controller) {
+      exportController = null
+      exporting.value = false
+    }
+  }
 }
 
-function titleCase(value) {
-  return String(value || '')
-    .replace(/[-_]+/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-}
-
-function containsChinese(value) {
-  return /[\u3400-\u9fff]/.test(String(value || ''))
-}
-
-function englishCategoryLabel(product) {
-  const raw = product.categoryLabel || ''
-  if (raw && !containsChinese(raw)) return raw
-  return titleCase(product.categoryKey || 'Category')
-}
+watch(() => auth.token, () => exportController?.abort())
+onBeforeUnmount(() => exportController?.abort())
 
 async function loadInventory() {
-  await catalog.loadHome('en')
+  try {
+    await catalog.loadCategories('en')
+  } catch (error) {
+    exportError.value = true
+    exportMessage.value = error.message || 'Categories could not be loaded. Please refresh.'
+  }
   await catalog.loadProducts({}, 'en')
 }
 
@@ -270,11 +248,49 @@ onMounted(loadInventory)
   padding: 36px 0 72px;
 }
 
+.inventory-export-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.inventory-export-toolbar span,
+.inventory-export-message {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.inventory-export-button {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 10px 22px;
+  background: #111;
+  color: #fff;
+  border: 1px solid #111;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.inventory-export-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.inventory-export-button:focus-visible {
+  outline: 3px solid #b66b3f;
+  outline-offset: 3px;
+}
+
+.inventory-export-message.is-error { color: #b42318; }
+
 .inventory-toolbar {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
   gap: 14px;
-  align-items: end;
+  align-items: start;
   margin-bottom: 18px;
 }
 
@@ -289,6 +305,12 @@ onMounted(loadInventory)
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.inventory-search small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
 }
 
 .inventory-field input,
@@ -432,6 +454,7 @@ onMounted(loadInventory)
 }
 
 @media (max-width: 900px) {
+  .inventory-export-toolbar { align-items: flex-start; }
   .inventory-toolbar,
   .inventory-stat-grid {
     grid-template-columns: 1fr;

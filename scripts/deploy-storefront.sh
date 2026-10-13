@@ -35,6 +35,13 @@ rollback() {
   trap - ERR
   # Never restart a legacy balance-resetting backend after negative balances exist.
   systemctl stop "$service" || true
+  if sudo -u postgres psql -X -d smawell_admin -At -c "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='secondary_order_no')" | grep -qx t; then
+    if ! tar -xOf "$backup/code.tar.gz" "$backend/order_numbering.py" | grep 'secondary_order_no' > /dev/null; then
+      echo "Legacy rollback blocked: primary/secondary order numbers require compatible code. Backup retained: $backup."
+      systemctl restart "$service" || true
+      exit "$status"
+    fi
+  fi
   weights=$(sudo -u postgres psql -X -d smawell_admin -At -c "SELECT EXISTS(SELECT 1 FROM product_size_prices s WHERE to_jsonb(s)->>'weight_grams' IS NOT NULL)" 2>/dev/null) || weights=unknown
   if [ "$weights" != f ]; then
     if ! tar -xOf "$backup/code.tar.gz" "$backend/db.py" | grep 'product_weights.migrate(cur)' > /dev/null || ! tar -tf "$backup/code.tar.gz" | grep "^$backend/product_weights.py$" > /dev/null; then

@@ -17,7 +17,7 @@ class StoreOrderNumberTest(unittest.TestCase):
             for order in orders:
                 row=conn.execute('SELECT id,order_no,created_at,contact_name FROM orders WHERE id=%s',(order['id'],)).fetchone()
                 self.assertEqual(row['order_no'],order_numbering.make_order_number(row['id'],row['created_at'],row['contact_name']))
-                self.assertIn('Élodie  张三',row['order_no'])
+                self.assertEqual(row['order_no'],f"LM-{row['id']:06d}")
             before=conn.execute('SELECT order_no FROM orders ORDER BY id').fetchall()
             order_numbering.migrate(conn.cursor());order_numbering.migrate(conn.cursor())
             self.assertEqual(conn.execute('SELECT order_no FROM orders ORDER BY id').fetchall(),before)

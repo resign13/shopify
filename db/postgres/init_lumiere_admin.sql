@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS banner_translations (
 CREATE TABLE IF NOT EXISTS orders (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   order_no VARCHAR(255) NOT NULL UNIQUE,
+  secondary_order_no VARCHAR(255) NOT NULL DEFAULT '',
   store_user_id BIGINT NOT NULL REFERENCES store_users(id),
   status VARCHAR(30) NOT NULL DEFAULT 'pending_payment'
     CHECK (status IN ('pending_payment', 'paid', 'shipped', 'completed', 'cancelled')),

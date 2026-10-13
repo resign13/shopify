@@ -50,7 +50,7 @@ class StoreSalesOwnershipTest(unittest.TestCase):
                                               'items': [{'productId': 7, 'sizeCode': 'M', 'quantity': 2}]})
                 self.assertEqual(result, {'id': 41})
                 number = next(call for call in cursor.calls if 'UPDATE orders SET order_no' in call[0])
-                self.assertEqual(number[1], ('PO1013-Fixture-000041',41))
+                self.assertEqual(number[1], ('LM-000041',41))
                 self.assertIn('FOR SHARE', cursor.calls[0][0])
                 insert = next(call for call in cursor.calls if 'INSERT INTO orders (' in call[0])
                 self.assertIn('owner_admin_id', insert[0])

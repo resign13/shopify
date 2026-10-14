@@ -47,7 +47,9 @@ function readInitialState() {
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
-    items: readInitialState(),
+    // Legacy carts are migrated only after the authenticated account is known.
+    items: [],
+    ownerId: null,
   }),
   getters: {
     itemCount: (state) => state.items.reduce((total, item) => total + item.quantity, 0),
@@ -57,6 +59,22 @@ export const useCartStore = defineStore('cart', {
   actions: {
     persist() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.items))
+      if (this.ownerId) {
+        localStorage.setItem(`${STORAGE_KEY}:${this.ownerId}`, JSON.stringify(this.items))
+        localStorage.setItem('gingtto-cart-owner', String(this.ownerId))
+      }
+    },
+    attachAccount(id) {
+      const next = id ? Number(id) : null
+      if (next === this.ownerId) return
+      const previous = this.ownerId
+      if (previous) this.persist()
+      if (!next) { this.items = []; this.ownerId = null; localStorage.removeItem(STORAGE_KEY); return }
+      const owner = localStorage.getItem('gingtto-cart-owner')
+      let raw = localStorage.getItem(`${STORAGE_KEY}:${next}`)
+      if (raw === null && (!owner || owner === String(next))) raw = localStorage.getItem(STORAGE_KEY)
+      try { const items = JSON.parse(raw || '[]'); this.items = Array.isArray(items) ? items.map(hydrateItem) : [] } catch { this.items = [] }
+      this.ownerId = next; this.persist()
     },
     syncItemPricing(item) {
       return hydrateItem(item)

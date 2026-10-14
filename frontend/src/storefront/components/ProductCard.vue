@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <article class="product-card">
     <RouterLink :to="`/product/${product.slug}`" class="product-card-media">
       <LazyImage

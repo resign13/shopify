@@ -52,7 +52,7 @@ test('header/footer expose only shop and inventory display pages, preserving cat
     const { useCatalogStore } = await server.ssrLoadModule('/src/storefront/stores/catalog.js')
     const pinia = createPinia()
     const auth = useAuthStore(pinia)
-    auth.token = 'test-token'; auth.user = { id: 1 }
+    auth.sessionId = 'public-session-fixture'; auth.user = { id: 1 }
     useCatalogStore(pinia).categories = [{ key: 'denim', label: 'Denim' }]
     const router = makeRouter(true)
     await router.push('/inventory')
@@ -67,7 +67,7 @@ test('header/footer expose only shop and inventory display pages, preserving cat
     }
     assert.match(header, /href="\/shop\?category=denim"/)
     for (const path of ['/checkout', '/account', '/orders']) assert.ok(header.includes(`href="${path}"`))
-    auth.token = ''; auth.user = null
+    auth.sessionId = ''; auth.user = null
     const guestHeader = await render(SiteHeader)
     assert.match(guestHeader, /href="\/login"/)
     assert.doesNotMatch(guestHeader, /class="nav-links"/)

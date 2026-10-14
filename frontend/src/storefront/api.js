@@ -1,8 +1,7 @@
+import { authenticatedFetch } from './authTransport'
 import { englishErrorMessage } from './utils/english'
 
 function resolveApiBase() {
-  const envBase = (import.meta.env.VITE_API_BASE_URL || '').trim()
-  if (envBase) return envBase
 
   if (typeof window !== 'undefined') {
     // Vite proxies /api during development; a local built preview and production
@@ -19,7 +18,7 @@ export async function request(path, options = {}) {
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
   let response
   try {
-    response = await fetch(`${API_BASE}${path}`, {
+    response = await authenticatedFetch(`${API_BASE}${path}`, {
       ...options,
       headers: {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -27,7 +26,7 @@ export async function request(path, options = {}) {
       },
     })
   } catch (error) {
-    if (error.name === 'AbortError') throw error
+    if (error.name === 'AbortError' || error.status) throw error
     throw new Error('Connection failed. Please check your network and try again.')
   }
 
@@ -46,7 +45,11 @@ export async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(englishErrorMessage(data.message, response.status, path))
+    const error = new Error(englishErrorMessage(data.message, response.status, path))
+    error.status = response.status
+    error.code = data.code
+    error.retryAfter = Number(response.headers.get('Retry-After') || 0)
+    throw error
   }
 
   return data

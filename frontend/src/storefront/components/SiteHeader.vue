@@ -131,7 +131,6 @@ onMounted(() => {
 
 async function handleLogout() {
   await auth.logout()
-  cart.clear()
   window.location.replace('/login')
 }
 </script>

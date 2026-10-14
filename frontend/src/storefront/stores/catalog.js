@@ -1,4 +1,4 @@
-﻿import { defineStore } from 'pinia'
+import { defineStore } from 'pinia'
 
 import { request } from '../api'
 import {
@@ -79,9 +79,9 @@ export const useCatalogStore = defineStore('catalog', {
     },
     authHeaders() {
       const auth = useAuthStore()
-      return auth.token
+      return auth.sessionId
         ? {
-            Authorization: `Bearer ${auth.token}`,
+
           }
         : {}
     },
@@ -210,7 +210,7 @@ export const useCatalogStore = defineStore('catalog', {
     },
     async loadMyOrders(query = '') {
       const auth = useAuthStore()
-      if (!auth.token) {
+      if (!auth.sessionId) {
         this.orders = []
         return
       }

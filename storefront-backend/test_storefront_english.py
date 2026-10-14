@@ -39,10 +39,11 @@ class StorefrontEnglishTest(unittest.TestCase):
         self.assertEqual(product['sku'], 'STYLE-A-Black')
 
     def test_home_stats_and_errors_are_english(self):
-        home = self.get('lang=zh',path='/api/home',auth=False).json
+        self.assertEqual(self.get('lang=zh',path='/api/home',auth=False).status_code, 401)
+        home = self.get('lang=zh',path='/api/home').json
         self.assertEqual([item['label'] for item in home['stats']], ['Live SKUs','Units in stock'])
         with application.app.test_client() as client, patch.object(application, 'cancel_order', side_effect=ValueError('\u9519\u8bef')):
-            result = client.post('/api/store/orders/1/cancel',headers={'Authorization':'Bearer fixture-catalog-token'})
+            result = client.post('/api/store/orders/1/cancel',headers={'Authorization':'Bearer '+self.token})
         self.assertEqual(result.status_code, 400)
         self.assertNotRegex(result.json['message'], r'[\u3400-\u9fff]')
         with application.app.test_request_context():
@@ -53,10 +54,12 @@ class StorefrontEnglishTest(unittest.TestCase):
             self.assertNotRegex(application.english_system_messages(response).json['message'], r'[\u3400-\u9fff]')
 
     def test_health_does_not_display_localized_database_details(self):
-        with application.app.test_client() as client, patch.object(application, 'verify_database_connection',side_effect=RuntimeError('\u6570\u636e\u5e93\u9519\u8bef')):
+        with application.app.test_client() as client, patch.object(application, 'verify_database_connection',side_effect=RuntimeError('\u6570\u636e\u5e93\u9519\u8bef')) as database:
             result=client.get('/api/health')
-        self.assertEqual(result.status_code, 500)
-        self.assertEqual(result.json['message'], 'Database is temporarily unavailable')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json['status'], 'ok')
+        self.assertNotIn('message', result.json)
+        database.assert_not_called()
 
     def test_historical_chinese_order_title_displays_english_without_rewriting_snapshot(self):
         original='\u5546\u54c1'

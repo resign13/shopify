@@ -211,7 +211,7 @@ async function downloadInventoryPdf() {
   }
 }
 
-watch(() => auth.token, () => exportController?.abort())
+watch(() => auth.sessionId, () => exportController?.abort())
 onBeforeUnmount(() => exportController?.abort())
 
 async function loadInventory() {

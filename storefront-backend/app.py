@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import secrets
 import sys
@@ -10,9 +11,6 @@ from pathlib import Path
 from typing import Any, Callable, TypeVar
 
 BASE_DIR = Path(__file__).resolve().parent
-LOCAL_VENDOR_DIR = BASE_DIR / "_vendor"
-if LOCAL_VENDOR_DIR.exists():
-    sys.path.insert(0, str(LOCAL_VENDOR_DIR))
 
 
 def load_env_file(path: Path) -> None:
@@ -29,6 +27,8 @@ def load_env_file(path: Path) -> None:
             __import__("os").environ[key] = value
 
 
+if os.environ.get('APP_ENV') != 'test':
+    load_env_file(BASE_DIR / '.env.security')
 load_env_file(BASE_DIR / ".env")
 
 import inventory_policy
@@ -36,7 +36,6 @@ import style_catalog
 import db as catalog_db
 
 from flask import Flask, g, jsonify, request, send_from_directory
-from flask_cors import CORS
 from werkzeug.security import check_password_hash
 
 from db import (
@@ -58,7 +57,13 @@ from db import (
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 app = Flask(__name__)
-CORS(app)
+import security_core
+import db as security_db
+if os.environ.get('APP_ENV') != 'test':
+    security_db.load_env_file(Path(__file__).resolve().parent / '.env.security')
+security = security_core.Security(app, security_db, 'store')
+from private_media import Media
+media = Media(app, security_db, 'store', Path(__file__).resolve().parent)
 
 F = TypeVar("F", bound=Callable[..., Any])
 DATA_DIR = BASE_DIR / "data"
@@ -80,8 +85,6 @@ def write_json(path: Path, payload: Any) -> None:
 def ensure_storage() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    if not SESSIONS_FILE.exists():
-        write_json(SESSIONS_FILE, [])
 
 
 def utc_now() -> str:
@@ -266,12 +269,8 @@ def build_collection_payload(section_slug: str, lang: str) -> dict[str, Any] | N
     }
 
 
-def load_sessions() -> list[dict[str, Any]]:
-    return read_json(SESSIONS_FILE)
 
 
-def save_sessions(items: list[dict[str, Any]]) -> None:
-    write_json(SESSIONS_FILE, items)
 
 
 def next_id(items: list[dict[str, Any]]) -> int:
@@ -279,58 +278,32 @@ def next_id(items: list[dict[str, Any]]) -> int:
 
 
 def extract_token() -> str:
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        return auth_header.replace("Bearer ", "", 1).strip()
-    return ""
+    return security.raw_token()
+
 
 
 def create_session(user: dict[str, Any]) -> str:
-    sessions = [item for item in load_sessions() if item["userId"] != user["id"]]
-    token = secrets.token_urlsafe(24)
-    sessions.append(
-        {
-            "id": next_id(sessions),
-            "userId": user["id"],
-            "token": token,
-            "createdAt": utc_now(),
-        }
-    )
-    save_sessions(sessions)
-    return token
+    return security_core.new_session(security_db, 'store', user['id'])
+
 
 
 def remove_session(token: str) -> None:
-    save_sessions([item for item in load_sessions() if item["token"] != token])
+    security_core.revoke(security_db, 'store', token=token)
+
 
 
 def require_auth(func: F) -> F:
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        token = extract_token()
-        session = next((item for item in load_sessions() if item["token"] == token), None)
-        if not session:
-            return jsonify({"message": "Unauthorized"}), 401
-        user = get_store_user_by_id(int(session["userId"]), include_password_hash=False)
-        if not user or user["status"] != "active":
-            return jsonify({"message": "Unauthorized"}), 401
-        g.current_user = user
-        g.current_token = token
-        return func(*args, **kwargs)
+    return security.authenticated(func)
 
-    return wrapper  # type: ignore[return-value]
 
 
 @app.get("/api/health")
 def health() -> Any:
-    try:
-        verify_database_connection()
-    except Exception as exc:
-        return jsonify({"status": "error", "message": "Database is temporarily unavailable", "timestamp": utc_now()}), 500
     return jsonify({"status": "ok", "timestamp": utc_now()})
 
 
 @app.get("/api/home")
+@require_auth
 def home() -> Any:
     lang = pick_language()
     return jsonify(build_homepage_payload(lang))
@@ -339,27 +312,26 @@ def home() -> Any:
 @app.post("/api/auth/store/login")
 def store_login() -> Any:
     payload = request.get_json(silent=True) or {}
-    email = str(payload.get("email", "")).strip().lower()
-    password = str(payload.get("password", "")).strip()
-    user = get_store_user_by_email(email, include_password_hash=True)
-    password_ok = user is not None and check_password_hash(user["passwordHash"], password)
-    if not user or user["status"] != "active" or not password_ok:
-        return jsonify({"message": "Invalid account or password."}), 401
-    token = create_session(user)
-    return jsonify({"token": token, "user": sanitize_store_user(user)})
+    if not isinstance(payload, dict):
+        return jsonify({'message':'Invalid request'}), 400
+    email = str(payload.get('email','')).strip().lower()
+    password = str(payload.get('password','')).strip()
+    return security.sign_in(email, password, sanitize_store_user)
+
 
 
 @app.get("/api/auth/me")
 @require_auth
 def auth_me() -> Any:
-    return jsonify({"role": "store", "user": sanitize_store_user(g.current_user)})
+    return jsonify({'role':'store','user':sanitize_store_user(g.current_user), **security.metadata(g.current_session)})
+
 
 
 @app.post("/api/auth/logout")
 @require_auth
 def logout() -> Any:
-    remove_session(g.current_token)
-    return jsonify({"message": "ok"})
+    return security.logout_response()
+
 
 
 @app.get('/api/catalog/categories')
@@ -386,17 +358,14 @@ def catalog_styles():
         try:
             variants = []
             lang = pick_language()
-            for row in list_products():
+            rows, total, selected = catalog_db.catalog_style_page(request.args, page, size, section)
+            for row in rows:
                 variants.append({**serialize_product(row, lang), 'styleCode': row['styleCode'],
                     'firstListedAt': row['firstListedAt'], 'firstProductId': row['firstProductId']})
             items = style_catalog.group_variants(variants)
-            if section == 'presale':
-                settings = style_catalog.config(catalog_db._fetch_one('SELECT * FROM presale_configs WHERE id=1'))
-                items = style_catalog.presale_groups(items, settings)
-            items = style_catalog.filter_groups(items, keyword=request.args.get('keyword',''),
-                category=request.args.get('category',''), stock_only=request.args.get('stockOnly') in {'1','true'})
-            total = len(items)
-            return jsonify({'items': items[(page-1)*size:page*size], 'total': total, 'page': page, 'pageSize': size})
+            position = {code:index for index,code in enumerate(selected)}
+            items.sort(key=lambda item:position[item['styleCode']])
+            return jsonify({'items':items,'total':total,'page':page,'pageSize':size})
         finally:
             catalog_db.CATALOG_CONNECTION.reset(token)
 
@@ -441,8 +410,14 @@ def collection_products(section_slug: str) -> Any:
 
 
 @app.get("/uploads/<path:filename>")
-def serve_upload(filename: str) -> Any:
-    return send_from_directory(UPLOAD_DIR, filename)
+def serve_upload(filename: str):
+    if media.mode == 'legacy':
+        return send_from_directory(media.uploads['store'], filename)
+    row = media.legacy_alias(request.url_root.rstrip('/') + '/uploads/' + filename, '/uploads/' + filename)
+    if not row:
+        from flask import abort
+        abort(404)
+    return media.content(row['id'])
 
 
 ALLOWED_ORDER_ATTACHMENT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
@@ -452,38 +427,38 @@ MAX_ORDER_ATTACHMENT_SIZE = 10 * 1024 * 1024
 
 @app.post("/api/order-attachments")
 @require_auth
-def upload_order_attachment() -> Any:
-    uploaded_files = request.files.getlist("files") or request.files.getlist("file")
-    uploaded_files = [item for item in uploaded_files if item and str(item.filename or "").strip()]
-    if not uploaded_files:
-        return jsonify({"message": "Missing attachment"}), 400
-    if len(uploaded_files) > 5:
-        return jsonify({"message": "You can upload up to 5 attachments"}), 400
+def upload_order_attachment():
+    files = [f for f in (request.files.getlist('files') or request.files.getlist('file')) if f.filename]
+    if not 1 <= len(files) <= 5: return jsonify({'message':'Select 1 to 5 attachments'}),400
+    try:
+        items=[{'url':media.upload(f,purpose='order',max_bytes=10*1024*1024),'filename':Path(f.filename).name} for f in files]
+        return jsonify({**(items[0] if len(items)==1 else {}),'items':items,'urls':[i['url'] for i in items]})
+    except ValueError as exc:
+        g.security_event='upload_rejected'
+        return jsonify({'message':str(exc)}),400
 
-    items = []
-    for file in uploaded_files:
-        filename = str(file.filename or "").strip()
-        suffix = Path(filename).suffix.lower()
-        mimetype = str(getattr(file, "mimetype", "") or "").lower()
-        if suffix not in ALLOWED_ORDER_ATTACHMENT_EXTENSIONS or mimetype not in ALLOWED_ORDER_ATTACHMENT_MIMES:
-            return jsonify({"message": "Only PDF, JPG, PNG, or WebP files are allowed"}), 400
-        file.stream.seek(0, 2)
-        size = file.stream.tell()
-        file.stream.seek(0)
-        if size > MAX_ORDER_ATTACHMENT_SIZE:
-            return jsonify({"message": "Each attachment must be 10MB or smaller"}), 400
-        safe_name = f"{secrets.token_hex(8)}_{Path(filename).name}"
-        target = UPLOAD_DIR / safe_name
-        file.save(target)
-        items.append({"url": build_upload_url(safe_name), "filename": filename})
 
-    if len(items) == 1:
-        return jsonify({**items[0], "items": items})
-    return jsonify({"items": items, "urls": [item["url"] for item in items]})
+def store_write_transaction(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        from flask import make_response
+        with catalog_db._connect() as conn:
+            marker = catalog_db.CATALOG_CONNECTION.set(conn)
+            try:
+                account = conn.execute('SELECT id,status FROM store_users WHERE id=%s FOR SHARE',(g.current_user['id'],)).fetchone()
+                identity=g.current_session
+                if not account or account['status'] != 'active' or not conn.execute('SELECT 1 FROM store_sessions WHERE id=%s AND revoked_at IS NULL AND expires_at>clock_timestamp()',(identity['session_id'],)).fetchone():
+                    return jsonify({'code':'session_invalid','message':'Please sign in again.'}),401
+                response = make_response(fn(*args, **kwargs))
+                if response.status_code >= 400: conn.rollback()
+                return response
+            finally: catalog_db.CATALOG_CONNECTION.reset(marker)
+    return wrapped
 
 
 @app.post("/api/orders")
 @require_auth
+@store_write_transaction
 def create_order_route() -> Any:
     payload = request.get_json(silent=True) or {}
     contact = payload.get("contact") or {}
@@ -563,6 +538,7 @@ def store_orders() -> Any:
 
 @app.post("/api/store/orders/<int:order_id>/cancel")
 @require_auth
+@store_write_transaction
 def cancel_store_order(order_id: int) -> Any:
     try:
         order = cancel_order(order_id, user_id=int(g.current_user["id"]))
@@ -581,4 +557,4 @@ verify_database_connection()
 
 
 if __name__ == "__main__":
-    app.run(debug=False, use_reloader=False, host="0.0.0.0", port=5001)
+    app.run(debug=False, use_reloader=False, host="127.0.0.1", port=5001)

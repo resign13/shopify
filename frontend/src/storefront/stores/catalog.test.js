@@ -18,7 +18,7 @@ test('home responses preserve concurrently loaded collection products and catego
     const catalog = useCatalogStore()
     let finishHome
     const product = { id: 7, categoryKey: 'denim', categoryId: 2, categorySortOrder: 3 }
-    const response = (value) => ({ ok: true, text: async () => JSON.stringify(value) })
+    const response = (value) => new Response(JSON.stringify(value), {headers:{'Content-Type':'application/json'}})
     globalThis.fetch = async (url) => {
       if (url.includes('/api/home')) return new Promise((resolve) => { finishHome = resolve })
       if (url.includes('/api/collections/')) return response({ sectionKey: 'bestSeller', items: [product] })

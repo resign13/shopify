@@ -16,6 +16,7 @@ test('multi-size cart additions keep existing lines, merge by actual SKU/size an
   try {
     const { useCartStore } = await server.ssrLoadModule('/src/storefront/stores/cart.js')
     const cart = useCartStore(createPinia())
+    cart.attachAccount(1)
     const product = { id: 1, slug: 'black', sku: 'CS2209-黑', stock: -10, price: 17, sizePrices: [
       { sizeCode: 'S', stock: 5, price: 17 }, { sizeCode: 'M', stock: 3, price: 19 }, { sizeCode: 'L', stock: 0, price: 21 },
     ] }
@@ -31,7 +32,10 @@ test('multi-size cart additions keep existing lines, merge by actual SKU/size an
     assert.equal(cart.items.find(item => item.lineKey === '1:M').quantity, 3)
     assert.equal(cart.items.some(item => item.sizeCode === 'L'), false)
     assert.equal(cart.subtotal, 192)
-    assert.equal(useCartStore(createPinia()).itemCount, 9)
+    const reopened = useCartStore(createPinia())
+    assert.equal(reopened.itemCount, 0)
+    reopened.attachAccount(1)
+    assert.equal(reopened.itemCount, 9)
     const brown = { ...product, id: 2, sku: 'CS2209-棕' }
     addSizeLinesToCart(cart, brown, lines, true)
     assert.equal(cart.items.length, 2)

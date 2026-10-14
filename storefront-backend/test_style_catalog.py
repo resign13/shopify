@@ -2,10 +2,14 @@
 import os
 if os.environ.get('PGHOST')!='127.0.0.1' or not os.environ.get('PGDATABASE','').endswith('_test'):
     raise RuntimeError('Explicit local *_test database required')
+os.environ.setdefault('APP_ENV', 'test')
+os.environ.setdefault('DB_SCHEMA_AUTO_MIGRATE', '1')
 import unittest
 from unittest.mock import patch
 from psycopg.types.json import Jsonb
 import app as application
+import test_cookie_client
+test_cookie_client.install(application.app)
 import db
 import style_catalog
 
@@ -21,7 +25,7 @@ class StyleCatalogTest(unittest.TestCase):
         self.add('STYLE-A','Black','2020-01-01',price=10,stock=0)
         self.add('STYLE-A','White','2025-01-01',price=12,stock=7)
         self.add('STYLE-B','Grey','2024-01-01',price=20,stock=5,category=2)
-        self.session=patch.object(application,'load_sessions',return_value=[{'token':'fixture-catalog-token','userId':1}]);self.session.start();self.addCleanup(self.session.stop)
+        self.token=application.create_session({'id':1})
 
     def add(self,style,color,date,price=10,stock=5,category=1,active=True):
         with db._connect() as conn:
@@ -35,7 +39,7 @@ class StyleCatalogTest(unittest.TestCase):
 
     def get(self,query='',path='/api/catalog/styles',auth=True):
         with application.app.test_client() as client:
-            return client.get(path+('?'+query if query else ''),headers={'Authorization':'Bearer fixture-catalog-token'} if auth else {})
+            return client.get(path+('?'+query if query else ''),headers={'Authorization':'Bearer '+self.token} if auth else {})
 
     def test_group_price_real_sizes_date_no_title_merge(self):
         data=self.get('lang=en').json

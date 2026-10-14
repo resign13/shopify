@@ -41,6 +41,8 @@ def load_env_file(path: Path) -> None:
             os.environ[key] = value
 
 
+if os.environ.get('APP_ENV') != 'test':
+    load_env_file(BASE_DIR / '.env.security')
 load_env_file(BASE_DIR / ".env")
 
 from psycopg import connect
@@ -75,11 +77,20 @@ def _connect(dbname: str | None = None, *, autocommit: bool = False):
         "user": DB_USER,
         "row_factory": dict_row,
         "autocommit": autocommit,
+        "connect_timeout": 5,
     }
     if DB_PASSWORD:
         kwargs["password"] = DB_PASSWORD
+    timeout = int(os.environ.get('DB_STATEMENT_TIMEOUT_MS', '15000'))
+    from flask import g, has_request_context
+    if has_request_context() and getattr(g, 'security_exporting', False):
+        timeout = int(os.environ.get('DB_EXPORT_STATEMENT_TIMEOUT_MS', '60000'))
+    lock_timeout = int(os.environ.get('DB_LOCK_TIMEOUT_MS', '5000'))
+    if not 100 <= timeout <= 300000 or not 100 <= lock_timeout <= 30000:
+        raise RuntimeError('Invalid database timeout configuration')
+    kwargs['options'] = f'-c statement_timeout={timeout} -c lock_timeout={lock_timeout} -c idle_in_transaction_session_timeout=60000'
     if os.environ.get("ORDER_NOTIFICATION_MAINTENANCE", "").lower() in {"1", "true", "on"}:
-        kwargs["options"] = "-c gingtto.notifications_paused=on"
+        kwargs["options"] += " -c gingtto.notifications_paused=on"
     return connect(**kwargs)
 
 
@@ -127,14 +138,13 @@ def _parse_label_image_urls(row: dict[str, Any]) -> list[str]:
 
 def verify_database_connection() -> None:
     with get_connection() as conn:
+        conn.execute('SET TRANSACTION READ ONLY')
         with conn.cursor() as cur:
             cur.execute("SELECT 1")
             cur.fetchone()
-            _apply_schema_migrations(cur)
-        conn.commit()
 
 
-def ensure_database_ready() -> None:
+def migrate_database() -> None:
     try:
         with _connect():
             pass
@@ -156,6 +166,28 @@ def ensure_database_ready() -> None:
                 cur.execute(schema_sql)
             _apply_schema_migrations(cur)
         conn.commit()
+
+
+def ensure_database_ready() -> None:
+    if os.environ.get('DB_SCHEMA_AUTO_MIGRATE') == '1':
+        import security_core
+        if not security_core.test_database():
+            raise RuntimeError('Runtime auto-migration is restricted to isolated local test databases')
+        migrate_database()
+        return
+    with _connect() as conn:
+        conn.execute('SET TRANSACTION READ ONLY')
+        row = conn.execute("SELECT to_regclass('public.security_schema_versions') AS name").fetchone()
+        if not row or not row['name']:
+            raise RuntimeError('Database migration required; run scripts/migrate-database.py with migration credentials')
+        import security_core
+        if not conn.execute('SELECT 1 FROM security_schema_versions WHERE version=%s', (security_core.VERSION,)).fetchone():
+            raise RuntimeError('Database security schema version is not ready')
+    if os.environ.get('APP_ENV','production') == 'production':
+        with _connect() as conn:
+            role = conn.execute('SELECT rolsuper,rolcreatedb,rolcreaterole,rolbypassrls FROM pg_roles WHERE rolname=current_user').fetchone()
+            ddl = conn.execute("SELECT has_schema_privilege(current_user,'public','CREATE') AS allowed").fetchone()['allowed']
+            if any(role.values()) or ddl: raise RuntimeError('Runtime database role has excessive privileges')
 
 
 def _fetch_all(query: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
@@ -338,6 +370,8 @@ def _apply_schema_migrations(cur: Any) -> None:
     )
     cur.execute("ALTER TABLE homepage_configs ADD COLUMN IF NOT EXISTS hero_banner_images TEXT NOT NULL DEFAULT '{}'")
     cur.execute("ALTER TABLE homepage_configs ADD COLUMN IF NOT EXISTS collection_product_ids TEXT NOT NULL DEFAULT '{}'")
+    import security_core
+    security_core.migrate(cur)
 
 
 def _build_product_bundles(product_ids: list[int]) -> tuple[
@@ -1030,7 +1064,7 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                     JOIN product_translations pt
                       ON pt.product_id = p.id AND pt.lang_code = %s
                     WHERE p.id = %s AND p.is_active = TRUE
-                    FOR UPDATE
+                    FOR UPDATE OF p
                     """,
                     (DEFAULT_LANG, product_id),
                 )
@@ -1136,7 +1170,9 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                         item["totalPrice"],
                     ),
                 )
-        conn.commit()
+        from private_media import bind_current, attachment_urls
+        bind_current('order', order_id, attachment_urls(payload))
+        if CATALOG_CONNECTION.get() is None: conn.commit()
     return get_order_by_id(order_id, user_id=int(payload["userId"]))  # type: ignore[return-value]
 
 
@@ -1167,9 +1203,50 @@ def cancel_order(order_id: int, *, user_id: int) -> dict[str, Any]:
                 "UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = %s",
                 (order_id,),
             )
-        conn.commit()
+        if CATALOG_CONNECTION.get() is None: conn.commit()
     return get_order_by_id(order_id, user_id=user_id)  # type: ignore[return-value]
 
 
 
 
+
+
+def catalog_style_page(args, page, page_size, section):
+    """Filter/page styles in PostgreSQL, then load ALL active colors of that page.
+    The first-listed identity still includes inactive colors. No style is split.
+    """
+    settings = style_catalog.config(_fetch_one('SELECT * FROM presale_configs WHERE id=1'))
+    code = style_catalog.style_sql('p')
+    available = inventory_policy.available_sql('p')
+    keyword = str(args.get('keyword', '')).strip()
+    keyword = keyword.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')
+    params = [DEFAULT_LANG]
+    having = ['TRUE']
+    if keyword:
+        having.append("BOOL_OR(concat_ws(' ',canonical_style,name,summary,sku,product_code,color_name,category_label) ILIKE %s)")
+        params.append('%'+keyword+'%')
+    if args.get('category'):
+        having.append('BOOL_OR(category_key=%s)');params.append(args['category'])
+    if args.get('stockOnly') in {'1','true'}: having.append('BOOL_OR(available>0)')
+    if section == 'presale':
+        having.append('canonical_style=ANY(%s)');params.append(settings['styleCodes'])
+    prefix = f"""WITH identity AS (
+      SELECT p.*, {code} AS canonical_style,
+        MIN(p.created_at) OVER(PARTITION BY {code}) AS first_listed_at,
+        MIN(p.id) OVER(PARTITION BY {code}) AS first_product_id FROM products p),
+      colors AS (SELECT p.*,pc.category_key,pt.name,pt.summary,pct.label AS category_label,
+        {available} AS available FROM identity p JOIN product_categories pc ON pc.id=p.category_id
+        LEFT JOIN product_translations pt ON pt.product_id=p.id AND pt.lang_code=%s
+        LEFT JOIN product_category_translations pct ON pct.category_id=pc.id AND pct.lang_code=pt.lang_code
+        WHERE p.is_active=TRUE),
+      styles AS (SELECT canonical_style,MIN(first_listed_at) AS first_listed_at,MIN(first_product_id) AS first_product_id
+        FROM colors GROUP BY canonical_style HAVING {' AND '.join(having)}) """
+    total = _fetch_one(prefix + 'SELECT COUNT(*) AS total FROM styles', tuple(params))['total']
+    order = 'first_listed_at DESC,first_product_id DESC'
+    ordered_params = list(params)
+    if section == 'presale' and settings['sortMode']=='manual':
+        order = 'array_position(%s::text[],canonical_style),'+order;ordered_params.append(settings['styleCodes'])
+    selected = _fetch_all(prefix + 'SELECT canonical_style FROM styles ORDER BY '+order+' LIMIT %s OFFSET %s',tuple(ordered_params+[page_size,(page-1)*page_size]))
+    codes = [r['canonical_style'] for r in selected]
+    rows = _fetch_all(_product_base_query()+' WHERE p.is_active=TRUE AND p.canonical_style=ANY(%s) ORDER BY p.id',(DEFAULT_LANG,codes)) if codes else []
+    return _build_product_result(rows), int(total), codes

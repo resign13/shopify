@@ -9,6 +9,7 @@ import style_catalog
 import product_weights
 import order_notification_schema
 import order_numbering
+import order_pricing
 import secrets
 import os
 from contextlib import contextmanager
@@ -269,6 +270,7 @@ def _empty_bundle() -> dict[str, str]:
 
 
 def _apply_schema_migrations(cur: Any) -> None:
+    order_pricing.migrate(cur)
     order_numbering.migrate(cur)
     import sales_ownership
     sales_ownership.migrate(cur)
@@ -883,6 +885,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
         SELECT
           o.id,
           o.order_no,
+          o.currency,
           o.created_at,
           o.updated_at,
           o.status,
@@ -942,6 +945,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
             grouped[order_id] = {
                 "id": order_id,
                 "orderNo": row["order_no"],
+                "currency": row.get('currency') or 'USD',
                 "createdAt": _iso(row["created_at"]),
                 "updatedAt": _iso(row["updated_at"]),
                 "status": row["status"],
@@ -1156,8 +1160,8 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
             for item in prepared_items:
                 cur.execute(
                     """
-                    INSERT INTO order_items (order_id, product_id, product_name, sku, size_code, quantity, unit_price, total_price)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO order_items (order_id, product_id, product_name, sku, size_code, quantity, unit_price, total_price, price_source, reference_price_usd)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         order_id,
@@ -1168,6 +1172,7 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                         item["quantity"],
                         item["unitPrice"],
                         item["totalPrice"],
+                        "catalog", item["unitPrice"],
                     ),
                 )
         from private_media import bind_current, attachment_urls

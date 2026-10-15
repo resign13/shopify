@@ -269,3 +269,29 @@ CREATE TABLE IF NOT EXISTS presale_configs (
  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 INSERT INTO presale_configs(id) VALUES(1) ON CONFLICT DO NOTHING;
+
+-- Order quotes: native USD/CNY amounts, immutable per-order FX snapshots.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'USD';
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(16,6);
+      ALTER TABLE order_items ADD COLUMN IF NOT EXISTS price_source TEXT NOT NULL DEFAULT 'legacy';
+      ALTER TABLE order_items ADD COLUMN IF NOT EXISTS reference_price_usd NUMERIC(12,2);
+      DO $$ BEGIN
+        IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='orders_currency_valid' AND conrelid='orders'::regclass) THEN
+          ALTER TABLE orders ADD CONSTRAINT orders_currency_valid CHECK(currency IN ('USD','CNY'));
+          ALTER TABLE orders ADD CONSTRAINT orders_exchange_rate_valid CHECK(
+            (exchange_rate IS NULL OR exchange_rate>0) AND (currency='USD' OR exchange_rate IS NOT NULL));
+        END IF;
+        IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='order_items_price_source_valid' AND conrelid='order_items'::regclass) THEN
+          ALTER TABLE order_items ADD CONSTRAINT order_items_price_source_valid CHECK(price_source IN ('legacy','catalog','manual'));
+          ALTER TABLE order_items ADD CONSTRAINT order_items_reference_valid CHECK(reference_price_usd IS NULL OR reference_price_usd>=0);
+        END IF;
+      END $$;
+
+-- First successful warehouse export; used only by the admin application.
+CREATE TABLE IF NOT EXISTS order_warehouse_prints (
+    order_id BIGINT PRIMARY KEY REFERENCES orders(id) ON DELETE CASCADE,
+    printed_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    printed_by_admin_id BIGINT REFERENCES admin_users(id) ON DELETE SET NULL,
+    printed_by_name TEXT NOT NULL DEFAULT '',
+    export_kind TEXT NOT NULL CHECK (export_kind IN ('export', 'export-by-sheet'))
+);

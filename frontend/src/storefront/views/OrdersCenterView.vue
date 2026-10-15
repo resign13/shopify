@@ -45,8 +45,8 @@
             <div class="account-order-meta">
               <span>{{ formatDate(order.createdAt) }}</span>
               <span>{{ copy.itemCountLabel }} {{ order.itemCount }}</span>
-              <span>{{ copy.shippingFeeLabel }} {{ formatCurrency(order.shippingFee || 0) }}</span>
-              <span>{{ formatCurrency(order.totalAmount) }}</span>
+              <span>{{ copy.shippingFeeLabel }} {{ formatCurrency(order.shippingFee || 0,order.currency) }}</span>
+              <span>{{ formatCurrency(order.totalAmount,order.currency) }}</span>
             </div>
 
             <p class="helper">{{ order.shippingAddress }}</p>
@@ -118,15 +118,15 @@
                 </div>
                 <div>
                   <span>{{ copy.itemsSubtotalLabel }}</span>
-                  <strong>{{ formatCurrency(itemsSubtotal(order)) }}</strong>
+                  <strong>{{ formatCurrency(itemsSubtotal(order),order.currency) }}</strong>
                 </div>
                 <div>
                   <span>{{ copy.shippingFeeLabel }}</span>
-                  <strong>{{ formatCurrency(order.shippingFee || 0) }}</strong>
+                  <strong>{{ formatCurrency(order.shippingFee || 0,order.currency) }}</strong>
                 </div>
                 <div>
                   <span>{{ copy.orderTotalLabel }}</span>
-                  <strong>{{ formatCurrency(order.totalAmount) }}</strong>
+                  <strong>{{ formatCurrency(order.totalAmount,order.currency) }}</strong>
                 </div>
                 <div>
                   <span>{{ copy.shippedAtLabel }}</span>
@@ -176,7 +176,7 @@
                   </div>
                   <div class="account-order-line-meta">
                     <span>{{ copy.quantityLabel }} {{ item.quantity }}</span>
-                    <strong>{{ formatCurrency(item.totalPrice) }}</strong>
+                    <strong>{{ formatCurrency(item.totalPrice,order.currency) }}</strong>
                   </div>
                 </article>
               </div>
@@ -194,6 +194,7 @@
 </template>
 
 <script setup>
+import { formatOrderCurrency as formatCurrency } from '../utils/orderCurrency';
 import { imageUrl } from '../imageUrl'
 function restoreImage(event, original) {
   if (event.target.getAttribute('src') !== original) event.target.src = original
@@ -300,14 +301,6 @@ function matchesTimeRange(value, range) {
   return true
 }
 
-function formatCurrency(value) {
-  const amount = Number(value || 0)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2,
-  }).format(amount)
-}
 
 function formatDate(value) {
   const date = value ? new Date(value) : null

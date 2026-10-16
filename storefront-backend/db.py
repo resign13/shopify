@@ -10,6 +10,7 @@ import product_weights
 import order_notification_schema
 import order_numbering
 import order_pricing
+import order_cancellation
 import secrets
 import os
 from contextlib import contextmanager
@@ -270,6 +271,7 @@ def _empty_bundle() -> dict[str, str]:
 
 
 def _apply_schema_migrations(cur: Any) -> None:
+    order_cancellation.migrate(cur)
     order_pricing.migrate(cur)
     order_numbering.migrate(cur)
     import sales_ownership
@@ -1205,7 +1207,7 @@ def cancel_order(order_id: int, *, user_id: int) -> dict[str, Any]:
             inventory_policy.return_order_stock(cur, [order_id])
 
             cur.execute(
-                "UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = %s",
+                "UPDATE orders SET status = 'cancelled', cancellation_note = '', updated_at = NOW() WHERE id = %s",
                 (order_id,),
             )
         if CATALOG_CONNECTION.get() is None: conn.commit()

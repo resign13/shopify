@@ -71,7 +71,7 @@ DB_USER = os.environ.get("PGUSER", "postgres")
 DB_PASSWORD = os.environ.get("PGPASSWORD") or os.environ.get("POSTGRES_PASSWORD") or ""
 
 
-def _connect(dbname: str | None = None, *, autocommit: bool = False):
+def _connect(dbname: str | None = None, *, autocommit: bool = False, coordination: bool = False):
     kwargs: dict[str, Any] = {
         "host": DB_HOST,
         "port": DB_PORT,
@@ -93,6 +93,13 @@ def _connect(dbname: str | None = None, *, autocommit: bool = False):
     kwargs['options'] = f'-c statement_timeout={timeout} -c lock_timeout={lock_timeout} -c idle_in_transaction_session_timeout=60000'
     if os.environ.get("ORDER_NOTIFICATION_MAINTENANCE", "").lower() in {"1", "true", "on"}:
         kwargs["options"] += " -c gingtto.notifications_paused=on"
+    import database_pool
+    if (dbname is None or dbname==DB_NAME) and database_pool.enabled():
+        return database_pool.borrow(kwargs,namespace='coordination' if coordination else 'business',
+            prefix='DB_COORDINATION' if coordination else 'DB',default_size=2 if coordination else 4,
+            settings={'statement_timeout':timeout,'lock_timeout':lock_timeout,
+                'idle_in_transaction_session_timeout':60000,
+                'gingtto.notifications_paused':'on' if os.environ.get('ORDER_NOTIFICATION_MAINTENANCE','').lower() in {'1','true','on'} else 'off'})
     return connect(**kwargs)
 
 
@@ -376,6 +383,8 @@ def _apply_schema_migrations(cur: Any) -> None:
     cur.execute("ALTER TABLE homepage_configs ADD COLUMN IF NOT EXISTS collection_product_ids TEXT NOT NULL DEFAULT '{}'")
     import security_core
     security_core.migrate(cur)
+    import external_api_schema
+    external_api_schema.migrate(cur)
 
 
 def _build_product_bundles(product_ids: list[int]) -> tuple[

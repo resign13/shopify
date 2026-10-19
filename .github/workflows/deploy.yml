@@ -41,7 +41,7 @@ jobs:
           PGDATABASE: gingtto_store_notifications_test
           PGUSER: postgres
           PGPASSWORD: fixture-only-password
-        run: pip install pip-audit==2.10.1 -r requirements.txt && python -m unittest -v test_security_phase1 test_security test_safe_images_transport test_order_currency test_order_cancellation test_order_notifications test_order_numbering test_sales_ownership test_temporary_inbound test_inventory_overdelivery test_product_weights test_style_catalog test_storefront_english && python ../scripts/verify-inventory-overdelivery.py storefront-backend && python ../scripts/verify-product-weights.py storefront-backend && python ../scripts/verify-style-catalog.py storefront-backend
+        run: pip install pip-audit==2.10.1 -r requirements.txt && python -m unittest -v test_security_phase1 test_security test_external_api test_database_pool test_safe_images_transport test_order_currency test_order_cancellation test_order_notifications test_order_numbering test_sales_ownership test_temporary_inbound test_inventory_overdelivery test_product_weights test_style_catalog test_storefront_english && python ../scripts/verify-inventory-overdelivery.py storefront-backend && python ../scripts/verify-product-weights.py storefront-backend && python ../scripts/verify-style-catalog.py storefront-backend
       - name: Dependency and credential checks
         run: |
           python -m pip_audit -r storefront-backend/requirements.txt

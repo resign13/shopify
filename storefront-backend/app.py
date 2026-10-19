@@ -62,6 +62,8 @@ import db as security_db
 if os.environ.get('APP_ENV') != 'test':
     security_db.load_env_file(Path(__file__).resolve().parent / '.env.security')
 security = security_core.Security(app, security_db, 'store')
+import external_api
+external_api.register(app, security_db, security)
 from private_media import Media
 media = Media(app, security_db, 'store', Path(__file__).resolve().parent)
 

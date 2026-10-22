@@ -140,7 +140,7 @@ def _serialize_label_image_urls(value: Any, fallback: str = "") -> str:
 
 
 def _parse_label_image_urls(row: dict[str, Any]) -> list[str]:
-    urls = _json_list(row.get("label_image_urls"))[:5]
+    urls = _json_list(row.get("label_image_urls"))
     if not urls and str(row.get("label_pdf_url") or "").strip():
         urls = [str(row.get("label_pdf_url") or "").strip()]
     return urls
@@ -606,6 +606,37 @@ def list_products() -> list[dict[str, Any]]:
     return _build_product_result(rows)
 
 
+def related_products(product):
+    rows = _fetch_all(_product_base_query() +
+        " WHERE p.is_active=TRUE AND pc.category_key=%s AND p.id<>%s ORDER BY pc.sort_order,pc.id,p.id LIMIT 3",
+        (DEFAULT_LANG, product['categoryKey'], product['id']))
+    return _build_product_result(rows)
+
+
+def inventory_products(lang):
+    """Complete inventory snapshot without loading galleries or descriptions."""
+    rows = _fetch_all("""SELECT p.id,p.slug,p.sku,p.product_code,p.color_group,p.color_name,
+      p.main_image_url,p.stock,""" + style_catalog.style_sql('p') + """ AS style_code,
+      pc.id AS category_id,pc.category_key,pc.sort_order,
+      COALESCE(t.name,fallback.name,p.product_code,p.sku,'') AS name,
+      COALESCE(ct.label,pc.category_key) AS category_label
+      FROM products p JOIN product_categories pc ON pc.id=p.category_id
+      LEFT JOIN product_translations t ON t.product_id=p.id AND t.lang_code=%s
+      LEFT JOIN product_translations fallback ON fallback.product_id=p.id AND fallback.lang_code=%s
+      LEFT JOIN product_category_translations ct ON ct.category_id=pc.id AND ct.lang_code=%s
+      WHERE p.is_active=TRUE ORDER BY pc.sort_order,pc.id,p.id""", (lang,DEFAULT_LANG,lang))
+    sizes = _fetch_all('SELECT product_id,size_code,stock FROM product_size_prices WHERE product_id=ANY(%s) ORDER BY product_id,sort_order,id', ([r['id'] for r in rows],)) if rows else []
+    grouped = {}
+    for size in sizes:
+        grouped.setdefault(size['product_id'], []).append({'sizeCode':size['size_code'],'stock':max(0,size['stock'])})
+    return [{'id':r['id'],'slug':r['slug'],'sku':r['sku'],'productCode':r['product_code'],
+        'styleCode':r['style_code'],'colorGroup':r['color_group'],'colorName':r['color_name'],
+        'name':r['name'],'image':r['main_image_url'],'categoryKey':r['category_key'],
+        'categoryId':r['category_id'],'categorySortOrder':r['sort_order'],'categoryLabel':r['category_label'],
+        'sizePrices':grouped.get(r['id'],[]),
+        'stock':sum(v['stock'] for v in grouped[r['id']]) if r['id'] in grouped else max(0,r['stock'])} for r in rows]
+
+
 def get_product_by_slug(slug: str) -> dict[str, Any] | None:
     rows = _fetch_all(
         _product_base_query() + """
@@ -891,7 +922,7 @@ def _build_order_search_text(order: dict[str, Any]) -> str:
     return " ".join(part for part in parts if part).lower()
 
 
-def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[str, Any]]:
+def list_orders(*, user_id: int | None = None, keyword: str = "", order_ids: list[int] | None = None) -> list[dict[str, Any]]:
     query = """
         SELECT
           o.id,
@@ -943,9 +974,17 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
         LEFT JOIN product_translations pt ON pt.product_id = p.id AND pt.lang_code = 'en'
     """
     params: list[Any] = []
+    conditions = []
     if user_id is not None:
-        query += " WHERE o.store_user_id = %s"
+        conditions.append("o.store_user_id = %s")
         params.append(user_id)
+    if order_ids is not None:
+        if not order_ids:
+            return []
+        conditions.append("o.id = ANY(%s)")
+        params.append(order_ids)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
     query += " ORDER BY o.id DESC, oi.id ASC"
     rows = _fetch_all(query, tuple(params))
 
@@ -1020,7 +1059,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "") -> list[dict[s
 
 
 def get_order_by_id(order_id: int, *, user_id: int | None = None) -> dict[str, Any] | None:
-    items = list_orders(user_id=user_id)
+    items = list_orders(user_id=user_id, order_ids=[order_id])
     return next((item for item in items if item["id"] == order_id), None)
 
 

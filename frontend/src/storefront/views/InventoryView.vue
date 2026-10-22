@@ -221,7 +221,7 @@ async function loadInventory() {
     exportError.value = true
     exportMessage.value = error.message || 'Categories could not be loaded. Please refresh.'
   }
-  await catalog.loadProducts({}, 'en')
+  await catalog.loadProducts({ view: 'inventory' }, 'en')
 }
 
 watch([categoryFilter, keyword, pageSize], () => {

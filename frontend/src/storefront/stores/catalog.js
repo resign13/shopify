@@ -66,6 +66,13 @@ export const useCatalogStore = defineStore('catalog', {
     currentProduct: null,
     related: [],
     orders: [],
+    ordersTotal: 0,
+    ordersPage: 1,
+    ordersLoading: false,
+    ordersError: '',
+    ordersRevision: 0,
+    detailRevision: 0,
+    productsRevision: 0,
     loading: false,
     detailLoading: false,
     orderSubmitting: false,
@@ -136,6 +143,7 @@ export const useCatalogStore = defineStore('catalog', {
       }
     },
     async loadProducts(filters = {}, lang = 'zh') {
+      const revision = ++this.productsRevision
       const params = new URLSearchParams({ lang })
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.set(key, value)
@@ -146,30 +154,34 @@ export const useCatalogStore = defineStore('catalog', {
         const raw = await request(`/api/products?${params.toString()}`, {
           headers: this.authHeaders(),
         })
+        if (revision !== this.productsRevision) return
         const data = applyProductsImageOverrides(raw)
         this.products = (data.items || []).map((item) => normalizeProductCategory(item))
       } catch (error) {
-        this.error = error.message || 'Product load failed'
+        if (revision === this.productsRevision) this.error = error.message || 'Product load failed'
       } finally {
-        this.loading = false
+        if (revision === this.productsRevision) this.loading = false
       }
     },
     async loadProduct(slug, lang = 'zh') {
+      const revision = ++this.detailRevision
       this.detailLoading = true
       this.error = ''
       try {
         const raw = await request(`/api/products/${slug}?lang=${encodeURIComponent(lang)}`, {
           headers: this.authHeaders(),
         })
+        if (revision !== this.detailRevision) return
         const data = applyProductDetailImageOverrides(raw)
         this.currentProduct = normalizeProductCategory(data.product || {})
         this.related = (data.related || []).map((item) => normalizeProductCategory(item))
       } catch (error) {
+        if (revision !== this.detailRevision) return
         this.currentProduct = null
         this.related = []
         this.error = error.message || 'Detail load failed'
       } finally {
-        this.detailLoading = false
+        if (revision === this.detailRevision) this.detailLoading = false
       }
     },
     async createOrder(payload) {
@@ -208,21 +220,33 @@ export const useCatalogStore = defineStore('catalog', {
         return null
       }
     },
-    async loadMyOrders(query = '') {
+    async loadMyOrders(filters = {}) {
       const auth = useAuthStore()
-      if (!auth.sessionId) {
+      const sessionId = auth.sessionId
+      const revision = ++this.ordersRevision
+      if (!sessionId) {
         this.orders = []
-        return
+        this.ordersTotal = 0
+        this.ordersLoading = false
+        return false
       }
+      this.ordersLoading = true
+      this.ordersError = ''
       try {
-        const suffix = query ? `?q=${encodeURIComponent(query)}` : ''
-        const data = await request(`/api/store/orders${suffix}`, {
-          headers: this.authHeaders(),
-        })
+        const params = new URLSearchParams({ page:1, pageSize:25, ...(typeof filters === 'string' ? { q: filters } : filters) })
+        const data = await request(`/api/store/orders?${params}`, { headers: this.authHeaders() })
+        if (revision !== this.ordersRevision || sessionId !== auth.sessionId) return false
         this.orders = data.items
+        this.ordersTotal = data.total ?? data.items.length
+        this.ordersPage = data.page || 1
+        return true
       } catch (error) {
-        this.orders = []
-        this.error = error.message || 'Order load failed'
+        if (revision === this.ordersRevision && sessionId === auth.sessionId) {
+          this.ordersError = error.message || 'Order load failed'
+        }
+        return false
+      } finally {
+        if (revision === this.ordersRevision) this.ordersLoading = false
       }
     },
     async cancelOrder(orderId) {
@@ -240,6 +264,10 @@ export const useCatalogStore = defineStore('catalog', {
       }
     },
     resetOrderState() {
+      this.ordersRevision++
+      this.ordersLoading = false
+      this.ordersTotal = 0
+      this.ordersError = ''
       this.orders = []
       this.orderSubmitting = false
       this.orderSuccessMessage = ''

@@ -378,6 +378,15 @@ def products() -> Any:
     lang = pick_language()
     category = request.args.get("category", "").strip().lower()
     keyword = request.args.get("keyword", "").strip().lower()
+    if request.args.get('view') == 'inventory':
+        with catalog_db._connect() as conn:
+            conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            marker = catalog_db.CATALOG_CONNECTION.set(conn)
+            try:
+                items = catalog_db.inventory_products(lang)
+                return jsonify({'items':items,'total':len(items)})
+            finally:
+                catalog_db.CATALOG_CONNECTION.reset(marker)
     items = [serialize_product(item, lang) for item in list_products()]
     if category:
         items = [item for item in items if item["categoryKey"] == category]
@@ -395,9 +404,8 @@ def product_detail(slug: str) -> Any:
         return jsonify({"message": "Product not found"}), 404
     related = [
         serialize_product(item, lang)
-        for item in list_products()
-        if item["categoryKey"] == product["categoryKey"] and item["id"] != product["id"]
-    ][:3]
+        for item in catalog_db.related_products(product)
+    ]
     return jsonify({"product": serialize_product(product, lang), "related": related})
 
 
@@ -534,8 +542,23 @@ def create_order_route() -> Any:
 @app.get("/api/store/orders")
 @require_auth
 def store_orders() -> Any:
-    keyword = request.args.get("q", "").strip()
-    return jsonify({"items": list_orders(user_id=int(g.current_user["id"]), keyword=keyword)})
+    from order_read_queries import page
+    try:
+        with catalog_db._connect() as conn:
+            conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            marker = catalog_db.CATALOG_CONNECTION.set(conn)
+            try:
+                if not any(key in request.args for key in ('page','pageSize','status','dateFrom','dateTo')):
+                    # Preserve older storefront clients during the staged rollout.
+                    keyword=request.args.get('q','').strip()
+                    if len(keyword)>200: raise ValueError('Search is limited to 200 characters')
+                    items=list_orders(user_id=int(g.current_user['id']),keyword=keyword)
+                    return jsonify({'items':items,'total':len(items)})
+                return jsonify(page(catalog_db, int(g.current_user['id']), request.args))
+            finally:
+                catalog_db.CATALOG_CONNECTION.reset(marker)
+    except ValueError as exc:
+        return jsonify({'message':str(exc)}),400
 
 
 @app.post("/api/store/orders/<int:order_id>/cancel")

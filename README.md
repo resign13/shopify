@@ -1,37 +1,23 @@
-﻿# Storefront Project
+# GINGTTO 商城
 
-目录结构：
-- frontend：前台商城 Vue 3 项目
-- storefront-backend：前台商城 Flask 后端
+Vue 3 + Flask + PostgreSQL。商城直接访问受限数据库角色，不通过默认服务令牌访问后台；浏览器使用同源 `/api` 与 HttpOnly Cookie，机器 API 使用独立 Key。会话存储在 PostgreSQL，不使用 JSON 会话文件。
 
-项目归属：
-- 商城会话数据：storefront-backend\data
-- 商城后端依赖：storefront-backend\_vendor
-- 商城后端通过接口连接后台后端，不再使用 shared-data
+## 本地开发
 
-环境变量：
-- LUMIERE_ADMIN_API_BASE_URL=http://127.0.0.1:5002
-- LUMIERE_SERVICE_TOKEN=lumiere-service-token
+1. 按 `D:/dulizhan/AGENTS.md` 的约定，先运行固定只读同步脚本：
+   `D:/Programs/Python314/python.exe D:/dulizhan/shopify-admin/scripts/sync-production-db.py`。
+2. 手动页面连接 `127.0.0.1:55439/lumiere_admin`，使用同步来的真实账号。PGUSER、PGPASSWORD 由现有私有本机配置加载，不提交到 Git。
+3. 当前功能分支下启动 `storefront-backend/app.py`；显式设置 `PGHOST=127.0.0.1`、`PGPORT=55439`、`PGDATABASE=lumiere_admin`，避免继承测试数据库变量。迁移走独立脚本，生产保持 `DB_SCHEMA_AUTO_MIGRATE=0`。
+4. `frontend` 目录执行 `npm ci`、`npm run dev`。前端端口 5173，后端默认端口 5001；检查 Vite 代理与本次后端一致。
 
-启动：
-1. cd storefront-backend
-2. python app.py
-3. cd ..\frontend
-4. npm install
-5. npm run dev
+自动化验证必须显式使用本机独立 `*_test` 库；含 seed/TRUNCATE 的脚本不得连接手动同步库或生产库。
 
-## GitHub 自动部署
+## 发布
 
-推送 `main` 或手动运行 `.github/workflows/deploy.yml` 会在 GitHub runner
-使用 Node.js 22 构建前端，然后上传代码包到服务器并重启 `smawell-store-api`。
-生产目录为 `/opt/smawell/shopify`，采用 Nginx、systemd 和 PostgreSQL。
+现有 GitHub Actions 在 PR 验证，main/手动工作流验证通过后发布。验证任务只构建一次前端；发布任务下载本次工作流的 `verified-frontend` 产物，不重新构建。
 
-仓库 Secrets：`DEPLOY_HOST`、`DEPLOY_USER`、`DEPLOY_PASSWORD`、
-`DEPLOY_KNOWN_HOSTS`（已核验的 SSH 主机公钥）。当前部署主机为 `47.82.147.236`。
+沿用 `SECURITY_DEPLOY_HOST`、`SECURITY_DEPLOY_USER`、`SECURITY_DEPLOY_SSH_KEY`、`SECURITY_DEPLOY_KNOWN_HOSTS`；根权限受限发布控制器校验许可、产物、配置和备份后切换。SSH 配置并未因本轮升级修改。
 
-部署包排除 `.env`、虚拟环境、上传目录和运行数据。服务器需预先具备
-Python 虚拟环境、rsync、生产配置和对应 systemd 服务。
-每次部署会备份代码、配置及数据库到 `/opt/smawell/backups/actions-*`，
-并通过共享锁串行执行商城和后台更新。部署失败恢复代码并重启服务，
-数据库新增字段保留，不自动恢复数据库备份以免覆盖新业务数据。
-前端构建失败时不会修改服务器。
+生产源文件、上传目录、会话和配置不进入产物。回滚仅回退兼容代码，不恢复生产数据库。含后端改动的发布仍需维护授权。
+
+详见 `docs/project-stability-upgrade.md`，包含本轮修改、配置额度、监测方式、兼容顺序及未启用事项。

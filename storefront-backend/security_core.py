@@ -146,6 +146,7 @@ class TrustedProxy:
 class Security:
     def __init__(self, app, db, channel):
         self.app, self.db, self.channel = app, db, channel
+        app.logger.setLevel(20)
         self.mode = os.environ.get('APP_ENV', 'production')
         if self.mode == 'test' and not test_database():
             raise RuntimeError('Test mode requires an isolated local *_test database')
@@ -364,6 +365,8 @@ class Security:
                     'security_event', 'security_exporting', 'export_image_cache',
                     'external_identity', 'external_request_id'):
             g.pop(key, None)
+        import request_telemetry
+        request_telemetry.start()
         g.security_started = time.perf_counter()
         path = request.path
         if self.channel == 'admin' and path.startswith('/api/public/'):
@@ -428,6 +431,24 @@ class Security:
                 if not conn.execute('SELECT pg_try_advisory_lock(hashtextextended(%s,0)) AS locked', (key,)).fetchone()['locked']:
                     conn.close()
                     return self.error(429, 'export_in_progress', 'Another export is in progress. Try again later.', 5)
+                try:
+                    slots = int(os.environ.get('SECURITY_EXPORT_GLOBAL_CONCURRENT', '1'))
+                    if not 1 <= slots <= 4:
+                        raise RuntimeError('Invalid global export budget')
+                    global_key = None
+                    for slot in range(slots):
+                        candidate = f'export:global:{slot}'
+                        if conn.execute('SELECT pg_try_advisory_lock(hashtextextended(%s,0)) AS locked', (candidate,)).fetchone()['locked']:
+                            global_key = candidate
+                            break
+                    if global_key is None:
+                        conn.execute('SELECT pg_advisory_unlock(hashtextextended(%s,0))', (key,))
+                        conn.close()
+                        return self.error(429, 'export_capacity', 'Export service is busy. Try again shortly.', 5)
+                except BaseException:
+                    conn.close()  # Pool reset discards any held advisory locks.
+                    raise
+                g.security_export_global_key = global_key
                 g.security_export_connection, g.security_export_key = conn, key
                 g.security_exporting = True
         return None
@@ -464,6 +485,8 @@ class Security:
             if request.path.startswith('/api/external/'):
                 if external: external.record(response)
             else: self.record(response)
+        import request_telemetry
+        request_telemetry.record(self.app, response)
         return response
 
     def teardown(self, error=None):
@@ -472,6 +495,8 @@ class Security:
             g.security_export_connection = None
             try:
                 conn.execute('SELECT pg_advisory_unlock(hashtextextended(%s,0))', (g.security_export_key,))
+                if getattr(g, 'security_export_global_key', None):
+                    conn.execute('SELECT pg_advisory_unlock(hashtextextended(%s,0))', (g.security_export_global_key,))
             finally:
                 conn.close()
 
@@ -505,7 +530,9 @@ class Security:
         return self.error(exc.code or 500, 'http_error', {400: 'Invalid request.', 403: 'Forbidden.', 404: 'Not found.', 413: 'Request is too large.'}.get(exc.code, 'Request failed.'))
 
     def server_error(self, exc):
-        self.app.logger.error('request_failed exception_type=%s route=%s', type(exc).__name__, request.url_rule.rule if request.url_rule else '<unknown>')
+        self.app.logger.error('request_failed exception_type=%s route=%s request_id=%s sqlstate=%s',
+            type(exc).__name__, request.url_rule.rule if request.url_rule else '<unknown>',
+            getattr(g, 'request_id', ''), getattr(exc, 'sqlstate', None))
         from psycopg import OperationalError
         if isinstance(exc,OperationalError):
             g.security_database_busy=True

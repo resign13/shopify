@@ -28,6 +28,8 @@
         </div>
 
         <p v-if="catalog.error" class="error-text">{{ catalog.error }}</p>
+        <p v-if="catalog.ordersError" role="alert" class="error-text">{{ catalog.ordersError }} Previous results are retained. <button type="button" class="text-button" @click="loadOrders">Retry</button></p>
+        <p v-if="catalog.ordersLoading" role="status" class="helper">Loading orders…</p>
 
         <div v-if="filteredOrders.length" class="account-order-list">
           <article v-for="order in filteredOrders" :key="order.id" class="account-order-item">
@@ -184,10 +186,12 @@
           </article>
         </div>
 
-        <div v-else class="panel-card empty-state-card">
+        <div v-else-if="!catalog.ordersLoading && !catalog.ordersError" class="panel-card empty-state-card">
           <h3>{{ isFiltering ? copy.filterEmptyTitle : copy.emptyTitle }}</h3>
           <p class="helper">{{ isFiltering ? copy.filterEmptyText : copy.ordersEmptyText }}</p>
         </div>
+        <StorefrontPagination :page="page" :page-size="pageSize" :total-items="catalog.ordersTotal" :size-options="[25,50,100]"
+          :labels="{prev:'Prev',next:'Next',of:'of',perPage:'Per page',itemLabel:'orders'}" @update:page="changePage" @update:page-size="pageSize=$event" />
       </article>
     </div>
   </section>
@@ -200,7 +204,8 @@ function restoreImage(event, original) {
   if (event.target.getAttribute('src') !== original) event.target.src = original
 }
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import StorefrontPagination from '../components/StorefrontPagination.vue'
 
 import { useCatalogStore } from '../stores/catalog'
 
@@ -210,6 +215,8 @@ const expandedOrderIds = ref(new Set())
 const cancellingOrderId = ref(0)
 const selectedTimeRange = ref('all')
 const selectedStatus = ref('all')
+const pageSize = ref(25)
+const page = ref(1)
 
 const copy = {
   overline: 'ORDER CENTER',
@@ -279,28 +286,21 @@ const statusOptions = computed(() =>
 )
 const isFiltering = computed(() => selectedTimeRange.value !== 'all' || selectedStatus.value !== 'all')
 
-const filteredOrders = computed(() =>
-  catalog.orders.filter((order) => {
-    const statusMatch = selectedStatus.value === 'all' || order.status === selectedStatus.value
-    const timeMatch = matchesTimeRange(order.createdAt, selectedTimeRange.value)
-    return statusMatch && timeMatch
-  })
-)
+const filteredOrders = computed(() => catalog.orders)
 
-function matchesTimeRange(value, range) {
-  if (range === 'all') return true
-  const target = new Date(value)
-  if (Number.isNaN(target.getTime())) return false
-  const now = new Date()
-  const msPerDay = 24 * 60 * 60 * 1000
-  const diffDays = (now.getTime() - target.getTime()) / msPerDay
-  if (range === '7d') return diffDays <= 7
-  if (range === '30d') return diffDays <= 30
-  if (range === '90d') return diffDays <= 90
-  if (range === 'year') return target.getFullYear() === now.getFullYear()
-  return true
+async function loadOrders() {
+  const filters = { page: page.value, pageSize: pageSize.value, status: selectedStatus.value }
+  const range = selectedTimeRange.value
+  if (range !== 'all') {
+    const now = new Date()
+    const start = range === 'year' ? new Date(now.getFullYear(), 0, 1) : new Date(now.getTime()-Number(range.slice(0,-1))*86400000)
+    filters.dateFrom = start.toISOString()
+    if (range === 'year') filters.dateTo = new Date(now.getFullYear()+1, 0, 1).toISOString()
+  }
+  if (await catalog.loadMyOrders(filters)) page.value = catalog.ordersPage
 }
-
+function changePage(value) { page.value = value; loadOrders() }
+watch([selectedTimeRange, selectedStatus, pageSize], () => { page.value = 1; loadOrders() })
 
 function formatDate(value) {
   const date = value ? new Date(value) : null
@@ -333,7 +333,7 @@ function itemsSubtotal(order) {
 }
 
 function orderLabelImages(order) {
-  if (Array.isArray(order.labelImageUrls)) return order.labelImageUrls.filter(Boolean).slice(0, 5)
+  if (Array.isArray(order.labelImageUrls)) return order.labelImageUrls.filter(Boolean)
   return order.labelPdfUrl ? [order.labelPdfUrl] : []
 }
 
@@ -355,11 +355,12 @@ async function handleCancel(orderId) {
     const next = new Set(expandedOrderIds.value)
     next.add(orderId)
     expandedOrderIds.value = next
+    await loadOrders()
   }
   cancellingOrderId.value = 0
 }
 
 onMounted(() => {
-  catalog.loadMyOrders()
+  loadOrders()
 })
 </script>

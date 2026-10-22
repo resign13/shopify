@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import LoginView from './views/LoginView.vue'
-import AccountView from './views/AccountView.vue'
-import OrdersCenterView from './views/OrdersCenterView.vue'
-import CheckoutView from './views/CheckoutView.vue'
-import ProductDetailView from './views/ProductDetailView.vue'
-import ShopView from './views/ShopView.vue'
-import InventoryView from './views/InventoryView.vue'
+const LoginView = () => import('./views/LoginView.vue')
+const AccountView = () => import('./views/AccountView.vue')
+const OrdersCenterView = () => import('./views/OrdersCenterView.vue')
+const CheckoutView = () => import('./views/CheckoutView.vue')
+const ProductDetailView = () => import('./views/ProductDetailView.vue')
+const ShopView = () => import('./views/ShopView.vue')
+const InventoryView = () => import('./views/InventoryView.vue')
 import { storefrontRoutes, storefrontAuthRedirect } from './utils/navigation'
 import { pinia } from './stores'
 import { useAuthStore } from './stores/auth'

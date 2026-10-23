@@ -1,4 +1,4 @@
-import { imageUrl } from '../imageUrl.js'
+import { loadInventoryPageImages } from './inventoryPdfImages.js'
 
 const WIDTH = 1320
 const HEIGHT = WIDTH * 210 / 297
@@ -33,40 +33,6 @@ function abortIfNeeded(signal) {
   if (signal?.aborted) throw new DOMException('Export cancelled', 'AbortError')
 }
 
-async function loadImage(source, signal) {
-  for (const url of new Set([imageUrl(source, 160), source])) {
-    abortIfNeeded(signal)
-    const image = await new Promise(resolve => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      const finish = value => {
-        clearTimeout(timer)
-        signal?.removeEventListener('abort', cancel)
-        img.onload = img.onerror = null
-        if (!value) img.src = ''
-        resolve(value)
-      }
-      const cancel = () => finish(null)
-      const timer = setTimeout(cancel, 8000)
-      signal?.addEventListener('abort', cancel, { once: true })
-      img.onload = () => {
-        // Check canvas readability here, so a bad CORS image cannot taint a PDF page.
-        try {
-          const canvas = document.createElement('canvas')
-          canvas.width = canvas.height = 1
-          canvas.getContext('2d').drawImage(img, 0, 0, 1, 1)
-          canvas.toDataURL()
-          finish(img)
-        } catch { finish(null) }
-      }
-      img.onerror = cancel
-      img.src = url
-    })
-    if (image) return image
-  }
-  abortIfNeeded(signal)
-  return null
-}
 
 function text(ctx, value, x, y, width, { size = 14, bold = false, color = '#111', align = 'center', lines = 3, family = FONT } = {}) {
   ctx.save()
@@ -201,16 +167,11 @@ export async function exportInventoryPdf(snapshot, { signal, onProgress = () => 
   pdf.setProperties({ title: 'GINGTTO Inventory', subject: snapshot.filterSummary || 'Available stock by color SKU and size', author: 'GINGTTO' })
   const pages = inventoryPdfPages(snapshot.rows, snapshot.columns)
   const images = new Map()
-  let missingImages = 0
   const timestamp = now.toLocaleString('en-GB', { hour12: false })
   for (let index = 0; index < pages.length; index++) {
     abortIfNeeded(signal)
-    const sources = [...new Set(pages[index].rows.map(row => row.image).filter(Boolean))].filter(source => !images.has(source))
-    // Bounded parallel downloads; never read lazy-image DOM or only visible rows.
-    for (let start = 0; start < sources.length; start += 6) {
-      await Promise.all(sources.slice(start, start + 6).map(async source => images.set(source, await loadImage(source, signal))))
-    }
-    abortIfNeeded(signal)
+    // Stop before downloading a partial PDF if a configured product image fails.
+    await loadInventoryPageImages(pages[index].rows, images, signal)
     const canvas = drawPage(pages[index], snapshot, images, index, pages.length, timestamp)
     if (index) pdf.addPage()
     pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, 297, 210)
@@ -218,9 +179,8 @@ export async function exportInventoryPdf(snapshot, { signal, onProgress = () => 
     onProgress(index + 1, pages.length)
     await new Promise(resolve => setTimeout(resolve, 0))
   }
-  missingImages = snapshot.rows.filter(row => row.image && !images.get(row.image)).length
   const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, '-')
   abortIfNeeded(signal)
   if (save) await pdf.save(`GINGTTO-Inventory-${stamp}.pdf`, { returnPromise: true })
-  return { pdf, pageCount: pages.length, rowCount: snapshot.rows.length, missingImages }
+  return { pdf, pageCount: pages.length, rowCount: snapshot.rows.length, missingImages: 0 }
 }

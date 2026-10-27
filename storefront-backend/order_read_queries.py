@@ -9,7 +9,7 @@ def page(db, user_id, args):
     conditions, params = ['o.store_user_id=%s'], [user_id]
     status = args.get('status', 'all')
     if status != 'all':
-        if status not in {'pending_payment', 'allocated', 'paid', 'shipped', 'completed', 'cancelled'}:
+        if status not in db.ORDER_STATUSES:
             raise ValueError('Invalid order status')
         conditions.append('o.status=%s')
         params.append(status)

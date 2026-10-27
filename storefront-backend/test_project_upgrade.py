@@ -31,6 +31,27 @@ class ReadUpgradeTest(unittest.TestCase):
         links=['https://example.test/'+str(i)+'.png' for i in range(12)]
         self.assertEqual(db._parse_label_image_urls({'label_image_urls':links}),links)
 
+    def test_partial_allocation_filter_ownership_and_repeat_migration(self):
+        with db.get_connection() as conn:
+            conn.execute("INSERT INTO store_users(name,email,password_hash,status) VALUES('Other','other@partial.test','fixture','active')")
+            for user_id in [1, 2]:
+                conn.execute("INSERT INTO orders(order_no,store_user_id,status,contact_name,phone,shipping_address,total_amount) VALUES(%s,%s,'partially_allocated','Fixture','123','Fixture',10)",
+                             ('PARTIAL-'+str(user_id), user_id))
+        for query in ['status=partially_allocated', 'page=1&pageSize=25&status=partially_allocated']:
+            result = self.get(query, path='/api/store/orders')
+            self.assertEqual(result.status_code, 200, result.json)
+            self.assertEqual(result.json['total'], 1)
+            self.assertEqual(result.json['items'][0]['orderNo'], 'PARTIAL-1')
+            self.assertEqual(result.json['items'][0]['status'], 'partially_allocated')
+            self.assertFalse(result.json['items'][0]['canCancel'])
+        db.ensure_database_ready(); db.ensure_database_ready()
+        self.assertEqual(db._fetch_one("SELECT count(*) AS n FROM orders WHERE status='partially_allocated'")['n'], 2)
+        import inventory_policy
+        inventory_policy.validate_transition('partially_allocated', 'cancelled')
+        for previous in ['shipped', 'completed', 'cancelled']:
+            with self.assertRaises(ValueError):
+                inventory_policy.validate_transition(previous, 'partially_allocated')
+
     def test_orders_page_filters_ownership_and_direct_detail(self):
         with db.get_connection() as conn:
             conn.execute("INSERT INTO store_users(name,email,password_hash,status) VALUES('Other','other@catalog.test','fixture','active')")

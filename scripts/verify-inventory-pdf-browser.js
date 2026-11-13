@@ -15,6 +15,13 @@ async (page) => {
     colorName: ['Black', 'White', 'Brown'][i % 3], image: '/uploads/pdf-fixture.jpg', stock: 0,
     sizePrices: [{ sizeCode: 'S', stock: 42 }, { sizeCode: 'M', stock: -123 }, { sizeCode: 'L', stock: 120 }, { sizeCode: 'XL', stock: 86 }, { sizeCode: 'XXL', stock: 51 }],
   }))
+  products[161].categoryKey = 'kids'
+  products[161].categoryLabel = 'Kids'
+  products[162].categoryKey = 'denim'
+  products[162].categoryLabel = 'Denim'
+  await page.route('**/api/catalog/categories?**', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ items: [
+    { key: 'tracksuit', label: 'Tracksuit - Without hood' }, { key: 'denim', label: 'Denim' }, { key: 'kids', label: 'Kids' },
+  ] }) }))
   let requests = 0, fail = false, hold = false, release
   const gate = new Promise(resolve => { release = resolve })
   await page.route('**/api/products?**', async route => {
@@ -88,12 +95,41 @@ async (page) => {
   check(await button.isEnabled(), 'Retry control missing after empty result')
 
   await page.getByRole('searchbox').fill('PDF-001,PDF-002')
-  await page.getByRole('combobox', { name: 'Category', exact: true }).selectOption('denim')
+  await page.getByRole('button', { name: 'Category', exact: true }).click()
+  await page.getByRole('checkbox', { name: 'Denim', exact: true }).check()
+  await page.getByRole('searchbox').click()
   check(await page.locator('.inventory-sku').count() === 0, 'Category must combine with the code query')
   await button.click()
   await page.getByRole('alert').waitFor()
   check((await page.getByRole('alert').innerText()).includes('Nothing to export'), 'PDF ignored category filter')
-  await page.getByRole('combobox', { name: 'Category', exact: true }).selectOption('')
+  await page.getByRole('button', { name: 'Category', exact: true }).click()
+  await page.getByRole('button', { name: 'All Categories', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await page.getByRole('searchbox').fill('')
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await page.getByRole('button', { name: 'Category', exact: true }).click()
+  await page.getByRole('checkbox', { name: 'Tracksuit - Without hood', exact: true }).check()
+  await page.getByRole('checkbox', { name: 'Denim', exact: true }).check()
+  check(await page.getByRole('checkbox', { name: 'Tracksuit - Without hood', exact: true }).isChecked(), 'First category lost when selecting a second')
+  await page.keyboard.press('Escape')
+  check(await page.getByRole('button', { name: 'Category', exact: true }).innerText().then(text => text.includes('2 categories selected')), 'Multi-category selection summary missing')
+  check(await page.locator('.inventory-stat-grid article').first().locator('strong').innerText() === '162', 'Multi-category rows must use OR, excluding unselected categories')
+  // The screen retains its original 42-piece snapshot; the PDF deliberately
+  // refreshes the first SKU to 99 pieces in the freshSnapshot check above.
+  check(await page.locator('.inventory-stat-grid article').nth(1).locator('strong').innerText() === '48438', 'Stock summary ignored multi-category scope')
+  check((await page.locator('.inventory-sku').first().innerText()).startsWith('PDF-001'), 'Category change did not return pagination to page one')
+  const categoryDownload = page.waitForEvent('download')
+  await button.click()
+  // Alter the live filter while the PDF runs: export retains the click-time scope.
+  await page.getByRole('button', { name: 'Category', exact: true }).click()
+  await page.getByRole('checkbox', { name: 'Tracksuit - Without hood', exact: true }).uncheck()
+  await page.keyboard.press('Escape')
+  await (await categoryDownload).saveAs('D:/dulizhan/output/pdf/inventory-multi-category-test.pdf')
+  await page.getByRole('status').filter({ hasText: 'PDF downloaded: 162 color SKUs' }).waitFor()
+  check(await page.locator('.inventory-sku').count() === 1, 'Deselecting a category must update the table')
+  await page.getByRole('button', { name: 'Category', exact: true }).click()
+  await page.getByRole('button', { name: 'All Categories', exact: true }).click()
+  await page.keyboard.press('Escape')
   // Test all genuine extra sizes, missing-image fallback, Unicode and panels.
   products.splice(1)
   products[0].sizePrices.push({ sizeCode: '5-6Y', stock: 7 }, { sizeCode: '7-8Y', stock: -8 })
@@ -101,15 +137,25 @@ async (page) => {
   await page.goto('http://127.0.0.1:5371/inventory')
   await page.locator('.inventory-sku').first().waitFor()
   check(await page.getByRole('columnheader', { name: '5-6Y', exact: true }).isVisible(), 'Extra sizes disappeared from the table')
+  await page.getByRole('button', { name: 'Export PDF', exact: true }).click()
+  await page.getByRole('alert').waitFor()
+  check((await page.getByRole('alert').innerText()).includes('Image download failed for SKU: PDF-001'), 'Missing image must stop export with the SKU and retry guidance')
+  check(await button.isEnabled(), 'Image failure did not release the export control')
+  products[0].image = '/uploads/pdf-fixture.jpg'
+  await page.reload()
+  await page.locator('.inventory-sku').first().waitFor()
   const panelDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export PDF', exact: true }).click()
   await (await panelDownload).saveAs('D:/dulizhan/output/pdf/inventory-extra-sizes-test.pdf')
   await page.getByRole('status').filter({ hasText: 'PDF downloaded:' }).waitFor()
   check((await page.getByRole('status').innerText()).includes('1 color SKUs, 2 pages'), 'Extra size panel missing')
-  check((await page.getByRole('status').innerText()).includes('1 product images could not be loaded'), 'Failed images must not be silent')
+  check(await page.getByRole('alert').count() === 0, 'Image retry did not clear its previous error')
   await page.setViewportSize({ width: 390, height: 844 })
   check(await page.getByRole('button', { name: 'Export PDF', exact: true }).isVisible(), 'Mobile export missing')
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Mobile outer layout overflow')
+  await page.getByRole('button', { name: 'Category', exact: true }).click()
+  check(await page.getByRole('group', { name: 'Categories', exact: true }).evaluate(el => el.getBoundingClientRect().right <= innerWidth + 1), 'Mobile category dropdown overflow')
+  await page.keyboard.press('Escape')
   await page.screenshot({ path: 'output/playwright/inventory-pdf-mobile.png', fullPage: false })
-  return { checks, all163Rows: true, multiCodeFilteredPdf: true, fullwidthCommas: true, categoryAndSearch: true, emptyResults: true, freshSnapshot: true, filteredPaginationDoesNotTruncateExport: true, extraSizes: true, errors: true, mobile: true }
+  return { checks, all163Rows: true, multiCodeFilteredPdf: true, fullwidthCommas: true, categoryAndSearch: true, multiCategoryPdf: true, categoryExportScopeLocked: true, categoryPaginationAndStock: true, emptyResults: true, freshSnapshot: true, filteredPaginationDoesNotTruncateExport: true, extraSizes: true, missingImageStopsExport: true, imageRetry: true, errors: true, mobile: true }
 }

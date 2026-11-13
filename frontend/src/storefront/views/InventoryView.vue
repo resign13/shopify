@@ -9,15 +9,10 @@
       </div>
       <p v-if="exportMessage" class="inventory-export-message" :class="{ 'is-error': exportError }" :role="exportError ? 'alert' : 'status'">{{ exportMessage }}</p>
       <section class="inventory-toolbar">
-        <label class="inventory-field">
+        <div class="inventory-field">
           <span>Category</span>
-          <select v-model="categoryFilter">
-            <option value="">All Categories</option>
-            <option v-for="category in categoryOptions" :key="category.key" :value="category.key">
-              {{ category.label }}
-            </option>
-          </select>
-        </label>
+          <CategoryMultiSelect v-model="categoryFilter" :options="categoryOptions" />
+        </div>
 
         <label class="inventory-field inventory-search">
           <span>Search</span>
@@ -125,6 +120,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import LazyImage from '../components/LazyImage.vue'
+import CategoryMultiSelect from '../components/CategoryMultiSelect.vue'
 import StorefrontPagination from '../components/StorefrontPagination.vue'
 import { useCatalogStore } from '../stores/catalog'
 import { useLocaleStore } from '../stores/locale'
@@ -136,7 +132,7 @@ import { applyProductsImageOverrides } from '../imageOverrides'
 const catalog = useCatalogStore()
 const locale = useLocaleStore()
 
-const categoryFilter = ref('')
+const categoryFilter = ref([])
 const keyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
@@ -149,7 +145,7 @@ const exportError = ref(false)
 let exportController = null
 
 const snapshot = computed(() => inventorySnapshot(catalog.products || [], categoryOptions.value))
-const filteredSnapshot = computed(() => filterInventorySnapshot(snapshot.value, { keyword: keyword.value, categoryKey: categoryFilter.value }))
+const filteredSnapshot = computed(() => filterInventorySnapshot(snapshot.value, { keyword: keyword.value, categoryKeys: categoryFilter.value }))
 const sizeColumns = computed(() => filteredSnapshot.value.columns)
 
 const paginationLabels = {
@@ -175,7 +171,7 @@ async function downloadInventoryPdf() {
   if (exporting.value || !auth.isAuthenticated) return
   const controller = new AbortController()
   // Lock the chosen scope at click time even if the input changes during export.
-  const filters = { keyword: keyword.value, categoryKey: categoryFilter.value }
+  const filters = { keyword: keyword.value, categoryKeys: [...categoryFilter.value] }
   const categories = categoryOptions.value.map(category => ({ ...category }))
   exportController = controller
   exporting.value = true

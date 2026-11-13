@@ -91,3 +91,26 @@ test('filtered snapshot retains matches beyond the first screen page and does no
   assert.equal(result.totalStock, 82)
   assert.deepEqual(inventoryPdfPages(result.rows, result.columns).flatMap(page => page.rows.map(row => row.id)), result.rows.map(row => row.id))
 })
+
+test('multiple categories share one OR scope for rows, stock, size columns and full PDF pagination', () => {
+  const all = inventorySnapshot(Array.from({ length: 43 }, (_, index) => ({
+    id: index + 1, sku: `MULTI-${String(index + 1).padStart(2, '0')}`,
+    categoryKey: ['shirt', 'tracksuit', 'kids'][index % 3],
+    sizePrices: [{ sizeCode: index % 3 === 2 ? '5-6Y' : 'M', stock: 2 }],
+  })))
+  const unchanged = JSON.stringify(all)
+  const selected = filterInventorySnapshot(all, { categoryKeys: ['shirt', 'tracksuit', 'shirt'] })
+  assert.equal(selected.rows.length, 29)
+  assert.equal(selected.totalStock, 58)
+  assert.equal(selected.columns.length, 6)
+  assert.ok(selected.rows.every(row => ['shirt', 'tracksuit'].includes(row.categoryKey)))
+  assert.equal(selected.filterSummary, 'Categories: shirt, tracksuit')
+  assert.deepEqual(inventoryPdfPages(selected.rows, selected.columns).flatMap(page => page.rows.map(row => row.id)), selected.rows.map(row => row.id))
+  const searched = filterInventorySnapshot(all, { categoryKeys: ['shirt', 'tracksuit'], keyword: 'MULTI-01,MULTI-02,MULTI-03' })
+  assert.deepEqual(searched.rows.map(row => row.id), [1, 2])
+  assert.equal(searched.totalStock, 4)
+  assert.equal(filterInventorySnapshot(all, { categoryKeys: ['missing'] }).rows.length, 0)
+  assert.equal(filterInventorySnapshot(all, { categoryKeys: [] }).rows.length, 43)
+  assert.equal(filterInventorySnapshot(all, { categoryKeys: [] }).scopeLabel, 'All products')
+  assert.equal(JSON.stringify(all), unchanged)
+})

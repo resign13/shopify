@@ -66,12 +66,13 @@ export function inventorySearchTerms(value = '') {
   return [...new Set(String(value ?? '').normalize('NFKC').split(/[,，]/).map(term => term.trim().toLowerCase()).filter(Boolean))]
 }
 
-// OR across comma-separated search terms, AND with the selected category.
+// OR within categories and within search terms, AND between the two filters.
 // Empty terms never act as wildcards. Filter before pagination for screen/PDF.
-export function filterInventorySnapshot(snapshot, { keyword = '', categoryKey = '' } = {}) {
+export function filterInventorySnapshot(snapshot, { keyword = '', categoryKeys = [], categoryKey = '' } = {}) {
   const terms = inventorySearchTerms(keyword)
+  const categories = [...new Set(categoryKeys.length ? categoryKeys : categoryKey ? [categoryKey] : [])]
   const rows = snapshot.rows.filter(row =>
-    (!categoryKey || row.categoryKey === categoryKey) &&
+    (!categories.length || categories.includes(row.categoryKey)) &&
     (!terms.length || terms.some(term => row.searchText.includes(term))),
   )
   const defaults = new Set(standardSizeColumns.map(column => column.key))
@@ -80,7 +81,7 @@ export function filterInventorySnapshot(snapshot, { keyword = '', categoryKey = 
     rows,
     columns,
     totalStock: rows.reduce((sum, row) => sum + row.totalStock, 0),
-    scopeLabel: terms.length || categoryKey ? 'Filtered results' : 'All products',
-    filterSummary: [categoryKey ? `Category: ${categoryKey}` : '', terms.length ? `Search: ${terms.join(', ')}` : ''].filter(Boolean).join(' | '),
+    scopeLabel: terms.length || categories.length ? 'Filtered results' : 'All products',
+    filterSummary: [categories.length ? `Categor${categories.length === 1 ? 'y' : 'ies'}: ${categories.join(', ')}` : '', terms.length ? `Search: ${terms.join(', ')}` : ''].filter(Boolean).join(' | '),
   }
 }

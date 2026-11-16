@@ -43,7 +43,7 @@ class ReadUpgradeTest(unittest.TestCase):
             self.assertEqual(result.json['total'], 1)
             self.assertEqual(result.json['items'][0]['orderNo'], 'PARTIAL-1')
             self.assertEqual(result.json['items'][0]['status'], 'partially_allocated')
-            self.assertFalse(result.json['items'][0]['canCancel'])
+            self.assertTrue(result.json['items'][0]['canCancel'])
         db.ensure_database_ready(); db.ensure_database_ready()
         self.assertEqual(db._fetch_one("SELECT count(*) AS n FROM orders WHERE status='partially_allocated'")['n'], 2)
         import inventory_policy

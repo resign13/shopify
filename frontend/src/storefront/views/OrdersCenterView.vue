@@ -58,7 +58,7 @@
                 {{ expandedOrderIds.has(order.id) ? copy.hideDetails : copy.viewDetails }}
               </button>
               <a
-                v-if="order.paymentLink && ['pending_payment', 'partially_allocated', 'allocated'].includes(order.status)"
+                v-if="order.paymentLink && order.cancelRequest?.state!=='pending' && ['pending_payment', 'partially_allocated', 'allocated'].includes(order.status)"
                 class="primary-button inline-button"
                 :href="order.paymentLink"
                 target="_blank"
@@ -77,6 +77,7 @@
               </button>
             </div>
 
+            <OrderCancellationRequest :order="order" @changed="loadOrders" />
             <div v-if="expandedOrderIds.has(order.id)" class="account-order-detail">
               <div class="account-detail-grid">
                 <div>
@@ -206,6 +207,7 @@ function restoreImage(event, original) {
 
 import { computed, onMounted, ref, watch } from 'vue'
 import StorefrontPagination from '../components/StorefrontPagination.vue'
+import OrderCancellationRequest from '../components/OrderCancellationRequest.vue'
 
 import { useCatalogStore } from '../stores/catalog'
 

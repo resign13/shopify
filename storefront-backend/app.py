@@ -561,6 +561,33 @@ def store_orders() -> Any:
         return jsonify({'message':str(exc)}),400
 
 
+import order_cancel_policy
+
+
+@app.errorhandler(order_cancel_policy.Conflict)
+def cancellation_conflict(error):
+    return jsonify({'code':'cancellation_conflict','message':'The order or cancellation request changed. Refresh the order; withdraw any pending request before editing.'}),409
+
+
+@app.post('/api/store/orders/<int:order_id>/cancellation-requests')
+@require_auth
+@store_write_transaction
+def request_order_cancellation(order_id):
+    try:
+        item=order_cancel_policy.submit(catalog_db,order_id,g.current_user,'store',request.get_json(silent=True) or {})
+    except ValueError:
+        return jsonify({'message':'Enter a cancellation reason of 1 to 500 characters.'}),400
+    return jsonify({'item':item})
+
+
+@app.post('/api/store/orders/cancellation-requests/<int:request_id>/withdraw')
+@require_auth
+@store_write_transaction
+def withdraw_order_cancellation(request_id):
+    item=order_cancel_policy.decide(catalog_db,request_id,g.current_user,'store',request.get_json(silent=True) or {},'withdrawn')
+    return jsonify({'item':item})
+
+
 @app.post("/api/store/orders/<int:order_id>/cancel")
 @require_auth
 @store_write_transaction

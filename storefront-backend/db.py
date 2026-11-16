@@ -11,6 +11,7 @@ import order_notification_schema
 import order_numbering
 import order_pricing
 import order_cancellation
+import order_cancel_policy
 import secrets
 import os
 from contextlib import contextmanager
@@ -189,6 +190,7 @@ def ensure_database_ready() -> None:
         row = conn.execute("SELECT to_regclass('public.security_schema_versions') AS name").fetchone()
         if not row or not row['name']:
             raise RuntimeError('Database migration required; run scripts/migrate-database.py with migration credentials')
+        order_cancel_policy.require_ready(conn)
         import security_core
         if not conn.execute('SELECT 1 FROM security_schema_versions WHERE version=%s', (security_core.VERSION,)).fetchone():
             raise RuntimeError('Database security schema version is not ready')
@@ -385,6 +387,7 @@ def _apply_schema_migrations(cur: Any) -> None:
     security_core.migrate(cur)
     import external_api_schema
     external_api_schema.migrate(cur)
+    order_cancel_policy.migrate(cur)
 
 
 def _build_product_bundles(product_ids: list[int]) -> tuple[
@@ -931,6 +934,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "", order_ids: lis
           o.created_at,
           o.updated_at,
           o.status,
+          cr.cancel_request,
           o.store_user_id,
           su.name AS user_name,
           su.company_name,
@@ -969,6 +973,8 @@ def list_orders(*, user_id: int | None = None, keyword: str = "", order_ids: lis
           p.main_image_url
         FROM orders o
         JOIN store_users su ON su.id = o.store_user_id
+        LEFT JOIN LATERAL (SELECT to_jsonb(r) AS cancel_request FROM order_cancellation_requests r
+          WHERE r.order_id=o.id ORDER BY r.id DESC LIMIT 1) cr ON TRUE
         LEFT JOIN order_items oi ON oi.order_id = o.id
         LEFT JOIN products p ON p.id = oi.product_id
         LEFT JOIN product_translations pt ON pt.product_id = p.id AND pt.lang_code = 'en'
@@ -1026,7 +1032,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "", order_ids: lis
                 "state": row.get("state") or "",
                 "zip": row.get("postal_code") or "",
                 "itemCount": 0,
-                "canCancel": row["status"] in {"pending_payment", "paid"},
+                **order_cancel_policy.presentation(row['status'],None,row['cancel_request'],public=True),
                 "items": [],
             }
 
@@ -1249,13 +1255,14 @@ def cancel_order(order_id: int, *, user_id: int) -> dict[str, Any]:
 
             if order["status"] == "cancelled":
                 return get_order_by_id(order_id, user_id=user_id)  # type: ignore[return-value]
-            if order["status"] not in {"pending_payment", "paid"}:
-                raise RuntimeError("Only pending payment or paid orders can be cancelled before shipment")
+            order_cancel_policy.assert_mutable(cur,order_id)
+            if order["status"] not in order_cancel_policy.DIRECT:
+                raise RuntimeError("Cancellation requires approval. Please submit a cancellation request.")
 
             inventory_policy.return_order_stock(cur, [order_id])
 
             cur.execute(
-                "UPDATE orders SET status = 'cancelled', cancellation_note = '', updated_at = NOW() WHERE id = %s",
+                "UPDATE orders SET cancelled_from_status=status,status = 'cancelled', cancellation_note = '', updated_at = NOW() WHERE id = %s",
                 (order_id,),
             )
         if CATALOG_CONNECTION.get() is None: conn.commit()

@@ -200,6 +200,7 @@
 
 <script setup>
 import { formatOrderCurrency as formatCurrency } from '../utils/orderCurrency';
+import { orderStatusSequence } from '../utils/orderStatusSequence';
 import { imageUrl } from '../imageUrl'
 function restoreImage(event, original) {
   if (event.target.getAttribute('src') !== original) event.target.src = original
@@ -260,9 +261,9 @@ const copy = {
   quantityLabel: 'Qty',
   statusMap: {
     pending_payment: 'Pending Payment',
-    partially_allocated: 'Partially Allocated',
-    allocated: 'Allocated · Awaiting Payment',
     paid: 'Paid',
+    partially_allocated: 'Partially Allocated',
+    allocated: 'Allocated',
     shipped: 'Shipped',
     completed: 'Completed',
     cancelled: 'Cancelled',
@@ -282,7 +283,7 @@ const copy = {
 }
 
 const statusOptions = computed(() =>
-  ['pending_payment', 'partially_allocated', 'allocated', 'paid', 'shipped', 'completed', 'cancelled'].map((value) => ({
+  orderStatusSequence.map((value) => ({
     value,
     label: copy.statusMap[value] || value,
   }))

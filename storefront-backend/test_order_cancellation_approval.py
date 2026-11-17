@@ -18,6 +18,14 @@ class StoreCancellationApprovalTest(unittest.TestCase):
         with application.app.test_client() as client:
             return client.open('/api/store/'+path,method=method,json=body,headers={'Authorization':'Bearer '+(token or self.token)})
 
+    def test_paid_can_advance_to_allocation_but_allocated_cannot_go_back(self):
+        for target in ('partially_allocated','allocated'):
+            policy.validate_transition('paid',target)
+        for target in ('paid','partially_allocated'):
+            with self.assertRaises(ValueError):
+                policy.validate_transition('allocated',target)
+        self.assertTrue(policy.presentation('partially_allocated',None,None,public=True)['canCancel'])
+
     def test_customer_can_directly_cancel_pending_and_partial_but_not_paid(self):
         db._fetch_one("UPDATE orders SET status='partially_allocated' WHERE id=%s RETURNING id",(self.oid,))
         self.assertEqual(self.call(f'orders/{self.oid}/cancel','POST').status_code,200)

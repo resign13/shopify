@@ -1,3 +1,4 @@
+import { maintenance } from './utils/maintenance.js';
 // Same-origin cookies carry credentials; only public session/CSRF metadata is visible to JS.
 let sessionId = '';
 let csrfToken = '';
@@ -28,6 +29,7 @@ export async function csrfHeaders(force = false) {
       const revision = identityRevision;
       const pending = fetch('/api/auth/csrf', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
         .then(async (response) => {
+          await maintenance.observe(response);
           const data = await response.json();
           if (!response.ok || !data.csrfToken) throw new Error('CSRF initialization failed');
           if (revision !== identityRevision) throw Object.assign(new Error('The signed-in account changed.'), {status:409,code:'session_changed'});
@@ -52,6 +54,7 @@ export async function authenticatedFetch(path, options = {}) {
   if (captured !== sessionId && !authPath) throw Object.assign(new Error('The signed-in account changed.'), {status:409,code:'session_changed'});
   if (captured && !authPath) headers.set('X-Auth-Session', captured);
   const response = await fetch(path, { ...options, credentials: 'same-origin', headers });
+  await maintenance.observe(response);
   if (captured && captured !== sessionId && !authPath) {
     const error = new Error('The signed-in account changed.');
     error.status = 409;

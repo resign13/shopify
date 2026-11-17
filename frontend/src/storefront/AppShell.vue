@@ -1,11 +1,11 @@
 <template>
-  <div class="app-shell">
+  <MaintenanceBoundary><div class="app-shell">
     <SiteHeader />
     <main class="page-shell">
       <RouterView :key="auth.user?.id" />
     </main>
     <SiteFooter v-if="!isLoginRoute" />
-  </div>
+  </div></MaintenanceBoundary>
 </template>
 
 <script setup>
@@ -14,6 +14,7 @@ import { RouterView, useRoute } from 'vue-router'
 
 import SiteFooter from './components/SiteFooter.vue'
 import SiteHeader from './components/SiteHeader.vue'
+import MaintenanceBoundary from './components/MaintenanceBoundary.vue'
 import { useLocaleStore } from './stores/locale'
 
 import { useAuthStore } from './stores/auth'

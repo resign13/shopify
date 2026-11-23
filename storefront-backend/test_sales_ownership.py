@@ -43,6 +43,7 @@ class StoreSalesOwnershipTest(unittest.TestCase):
                 @contextmanager
                 def connection(): yield Connection(cursor)
                 with patch.object(db, 'get_connection', connection), \
+                     patch.object(db.inventory_policy, 'order_stock_changes', return_value={(7, 'M'): -2}), \
                      patch.object(db.inventory_policy, 'adjust_stock') as stock, \
                      patch.object(db, 'get_order_by_id', return_value={'id': 41}):
                     result = db.create_order({'userId': 1, 'ownerAdminId': 999, 'createdByAdminId': 999,

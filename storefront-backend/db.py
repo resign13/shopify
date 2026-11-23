@@ -926,7 +926,7 @@ def _build_order_search_text(order: dict[str, Any]) -> str:
 
 
 def list_orders(*, user_id: int | None = None, keyword: str = "", order_ids: list[int] | None = None) -> list[dict[str, Any]]:
-    query = """
+    query = f"""
         SELECT
           o.id,
           o.order_no,
@@ -934,6 +934,7 @@ def list_orders(*, user_id: int | None = None, keyword: str = "", order_ids: lis
           o.created_at,
           o.updated_at,
           o.status,
+          {inventory_policy.ORDER_STOCK_ON_PAYMENT_SQL} AS stock_on_payment,
           cr.cancel_request,
           o.store_user_id,
           su.name AS user_name,
@@ -1033,6 +1034,9 @@ def list_orders(*, user_id: int | None = None, keyword: str = "", order_ids: lis
                 "zip": row.get("postal_code") or "",
                 "itemCount": 0,
                 **order_cancel_policy.presentation(row['status'],None,row['cancel_request'],public=True),
+                "cancelReturnsStock": inventory_policy.order_stock_deducted(
+                    row['status'], on_payment=row['stock_on_payment'],
+                ),
                 "items": [],
             }
 
@@ -1172,7 +1176,10 @@ def create_order(payload: dict[str, Any]) -> dict[str, Any]:
                     }
                 )
 
-            inventory_policy.adjust_stock(cur, {(i['productId'], i['sizeCode']): -i['quantity'] for i in prepared_items})
+            quantities = {(i['productId'], i['sizeCode']): i['quantity'] for i in prepared_items}
+            changes = inventory_policy.order_stock_changes(cur, None, 'pending_payment', {}, quantities)
+            if changes:
+                inventory_policy.adjust_stock(cur, changes)
 
             cur.execute(
                 """
@@ -1259,7 +1266,10 @@ def cancel_order(order_id: int, *, user_id: int) -> dict[str, Any]:
             if order["status"] not in order_cancel_policy.DIRECT:
                 raise RuntimeError("Cancellation requires approval. Please submit a cancellation request.")
 
-            inventory_policy.return_order_stock(cur, [order_id])
+            quantities = inventory_policy.order_quantities(cur, order_id)
+            changes = inventory_policy.order_stock_changes(cur, order['status'], 'cancelled', quantities, quantities)
+            if changes:
+                inventory_policy.adjust_stock(cur, changes)
 
             cur.execute(
                 "UPDATE orders SET cancelled_from_status=status,status = 'cancelled', cancellation_note = '', updated_at = NOW() WHERE id = %s",

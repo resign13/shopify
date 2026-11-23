@@ -16,7 +16,7 @@ class OrderCurrencyTest(unittest.TestCase):
         cursor=Cursor(None)
         @contextmanager
         def connection():yield Connection(cursor)
-        with patch.object(db,'get_connection',connection),patch.object(db.inventory_policy,'adjust_stock'),patch.object(db,'get_order_by_id',return_value={'id':41,'currency':'USD'}):
+        with patch.object(db,'get_connection',connection),patch.object(db.inventory_policy,'order_stock_changes',return_value={(7,'M'):-2}),patch.object(db.inventory_policy,'adjust_stock'),patch.object(db,'get_order_by_id',return_value={'id':41,'currency':'USD'}):
             result=db.create_order({'userId':1,'contactName':'Fixture','phone':'123','shippingAddress':'Fixture',
                 'currency':'CNY','exchangeRate':1,'items':[{'productId':7,'sizeCode':'M','quantity':2,'unitPrice':0,'priceSource':'manual'}]})
         self.assertEqual(result['currency'],'USD')

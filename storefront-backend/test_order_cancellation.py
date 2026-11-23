@@ -43,11 +43,11 @@ class CustomerCancellationTest(unittest.TestCase):
 
     def test_ownership_and_failure_do_not_write_status_or_note(self):
         with self.assertRaises(LookupError): db.cancel_order(self.oid,user_id=self.user+999999)
-        original = db.inventory_policy.return_order_stock
-        def fail(cur, ids):
-            original(cur,ids)
+        original = db.inventory_policy.adjust_stock
+        def fail(cur, changes):
+            original(cur,changes)
             raise ValueError('fixture after-stock failure')
-        with patch.object(db.inventory_policy,'return_order_stock',side_effect=fail), self.assertRaises(ValueError):
+        with patch.object(db.inventory_policy,'adjust_stock',side_effect=fail), self.assertRaises(ValueError):
             db.cancel_order(self.oid,user_id=self.user)
         self.assertEqual(self.stock(),8)
         row = db._fetch_one('SELECT status,cancellation_note FROM orders WHERE id=%s',(self.oid,))
